@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcade Factory</title>
+
+<style>
+:root{
+  --bg1:#020617;
+  --bg2:#0f172a;
+  --card:#111827;
+  --border:rgba(255,255,255,0.08);
+  --accent:#6366f1;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+
+body{
+  min-height:100vh;
+  background:radial-gradient(circle at top,var(--bg2),var(--bg1));
+  color:var(--text);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.container{
+  width:100%;
+  max-width:920px;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  margin-bottom:26px;
+  letter-spacing:1px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:26px 22px;
+  text-align:center;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 34px rgba(99,102,241,.25);
+}
+
+.icon{
+  font-size:3.2rem;
+  margin-bottom:12px;
+}
+
+.card h2{
+  margin-bottom:6px;
+  font-size:1.25rem;
+}
+
+.card p{
+  font-size:.9rem;
+  color:var(--muted);
+}
+
+.footer{
+  text-align:center;
+  margin-top:28px;
+  font-size:.8rem;
+  color:#6b7280;
+}
+
+/* Mobile touch feedback */
+.card:active{
+  transform:scale(.97);
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>🎮 Arcade Factory</h1>
+
+  <div class="grid">
+
+    <div class="card" onclick="openGame('games/hangman.html')">
+      <div class="icon">🪢</div>
+      <h2>Hangman</h2>
+      <p>Words, strategy & pressure</p>
+    </div>
+
+    <div class="card" onclick="openGame('games/number.html')">
+      <div class="icon">🔢</div>
+      <h2>Guess the Number</h2>
+      <p>Logic & probability</p>
+    </div>
+
+    <div class="card" onclick="openGame('games/rps.html')">
+      <div class="icon">✊ ✋ ✌️</div>
+      <h2>Rock Paper Scissors</h2>
+      <p>Classic reflex game</p>
+    </div>
+
+    <div class="card" onclick="openGame('games/tictactoe.html')">
+      <div class="icon">❌ ⭕</div>
+      <h2>Tic Tac Toe</h2>
+      <p>PvP & AI battles</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function openGame(path){
+  window.location.href = path;
+}
+</script>
+</body>
+</html>
