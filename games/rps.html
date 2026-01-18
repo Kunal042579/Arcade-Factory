@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rock Paper Scissors</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  text-align:center;
+}
+
+/* ---------- PAGE ---------- */
+body{
+  background:#020617;
+  color:#e5e7eb;
+}
+
+/* ---------- HOME BUTTON ---------- */
+.back-btn{
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:9999;
+  padding:10px 20px;
+  font-size:1rem;
+  font-weight:600;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  background:rgba(0,0,0,0.75);
+  color:white;
+  backdrop-filter:blur(8px);
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+}
+.back-btn:active{transform:scale(.95)}
+.back-btn .arrow{
+  display:inline-block;
+  transform:translateY(-2px);
+  margin-right:6px;
+}
+
+/* ---------- SCREENS ---------- */
+.screen{
+  display:none;
+  min-height:100vh;
+  justify-content:center;
+  align-items:center;
+  padding-top:70px;
+}
+.screen.active{display:flex}
+
+/* ---------- CARD ---------- */
+.card{
+  background:#0f172a;
+  padding:32px 36px;
+  border-radius:18px;
+  box-shadow:0 20px 45px rgba(0,0,0,0.4);
+  min-width:280px;
+}
+.card h1,
+.card h2{margin-bottom:20px}
+.card input{
+  width:100%;
+  padding:12px;
+  margin:8px 0;
+  border-radius:10px;
+  border:none;
+  font-size:1rem;
+}
+.card button{
+  width:100%;
+  padding:14px;
+  margin-top:12px;
+  font-size:1.05rem;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  background:#334155;
+  color:white;
+}
+.card button:hover{background:#475569}
+
+/* ---------- GAME ---------- */
+.game h1{
+  background:#081b31;
+  height:5rem;
+  line-height:5rem;
+  font-size:1.8rem;
+}
+
+.choices{
+  display:flex;
+  justify-content:center;
+  gap:2.5rem;
+  margin-top:3rem;
+}
+
+.choice{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:3rem;
+  cursor:pointer;
+  background:#111827;
+  border:2px solid #1f2933;
+}
+.choice:hover{background:#1f2933}
+
+.score-board{
+  display:flex;
+  justify-content:center;
+  gap:4rem;
+  margin-top:2.5rem;
+  font-size:1.4rem;
+}
+#user-score,#comp-score{font-size:2.5rem}
+
+#msg{
+  margin-top:2.5rem;
+  background:#081b31;
+  display:inline-block;
+  padding:1rem 1.5rem;
+  border-radius:1rem;
+  font-size:1.3rem;
+}
+</style>
+</head>
+
+<body>
+
+<button class="back-btn" onclick="goHome()">
+  <span class="arrow">⬅</span> Home
+</button>
+
+<!-- START -->
+<div id="start" class="screen active">
+  <div class="card">
+    <h1>Rock Paper Scissors</h1>
+    <button onclick="show('mode')">Start Game</button>
+  </div>
+</div>
+
+<!-- MODE -->
+<div id="mode" class="screen">
+  <div class="card">
+    <h2>Select Mode</h2>
+    <button onclick="selectMode('pvc')">Player vs Computer</button>
+    <button onclick="selectMode('pvp')">Player vs Player</button>
+  </div>
+</div>
+
+<!-- NAME SETUP -->
+<div id="setup" class="screen">
+  <div class="card">
+    <h2>Player Names</h2>
+    <input id="name1" placeholder="Player 1 name">
+    <input id="name2" placeholder="Player 2 name">
+    <button onclick="beginGame()">Begin</button>
+  </div>
+</div>
+
+<!-- PASS SCREEN -->
+<div id="pass" class="screen">
+  <div class="card">
+    <h2 id="passText">Pass the phone</h2>
+    <button onclick="continueTurn()">Continue</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen game">
+  <div>
+    <h1>Rock Paper Scissors</h1>
+
+    <div class="choices">
+      <div class="choice" data-choice="Rock">✊</div>
+      <div class="choice" data-choice="Paper">✋</div>
+      <div class="choice" data-choice="Scissors">✌️</div>
+    </div>
+
+    <div class="score-board">
+      <div>
+        <div id="user-score">0</div>
+        <div id="p1">Player 1</div>
+      </div>
+      <div>
+        <div id="comp-score">0</div>
+        <div id="p2">Computer</div>
+      </div>
+    </div>
+
+    <div id="msg">Play your move</div>
+  </div>
+</div>
+
+<script>
+function goHome(){
+  window.location.href="../index.html";
+}
+
+function show(id){
+  document.querySelectorAll(".screen")
+    .forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+/* ---------- STATE ---------- */
+let mode="pvc";
+let turn=0;
+let scores=[0,0];
+let p1choice=null;
+let players=["Player 1","Computer"];
+
+function selectMode(m){
+  mode=m;
+  show("setup");
+  document.getElementById("name2").style.display =
+    m==="pvp" ? "block" : "none";
+}
+
+function beginGame(){
+  players[0] =
+    document.getElementById("name1").value.trim() || "Player 1";
+  players[1] =
+    mode==="pvp"
+      ? (document.getElementById("name2").value.trim() || "Player 2")
+      : "Computer";
+
+  scores=[0,0];
+  updateScores();
+  document.getElementById("p1").textContent=players[0];
+  document.getElementById("p2").textContent=players[1];
+  document.getElementById("msg").textContent="Play your move";
+  turn=0;
+  show("game");
+}
+
+function updateScores(){
+  document.getElementById("user-score").textContent=scores[0];
+  document.getElementById("comp-score").textContent=scores[1];
+}
+
+function compChoice(){
+  return ["Rock","Paper","Scissors"]
+    [Math.floor(Math.random()*3)];
+}
+
+function play(choice){
+  if(mode==="pvc"){
+    decide(choice, compChoice());
+  }else{
+    if(turn===0){
+      p1choice=choice;
+      turn=1;
+      document.getElementById("passText")
+        .textContent=`Pass the phone to ${players[1]}`;
+      show("pass");
+    }else{
+      decide(p1choice, choice);
+      p1choice=null;
+      turn=0;
+    }
+  }
+}
+
+function continueTurn(){
+  document.getElementById("msg").textContent =
+    `${players[1]}'s turn`;
+  show("game");
+}
+
+function decide(a,b){
+  if(a===b){
+    document.getElementById("msg").textContent="Draw!";
+    return;
+  }
+  const win =
+    (a==="Rock"&&b==="Scissors")||
+    (a==="Paper"&&b==="Rock")||
+    (a==="Scissors"&&b==="Paper");
+
+  if(win){
+    scores[0]++;
+    document.getElementById("msg")
+      .textContent=`${players[0]} wins! ${a} beats ${b}`;
+  }else{
+    scores[1]++;
+    document.getElementById("msg")
+      .textContent=`${players[1]} wins! ${b} beats ${a}`;
+  }
+  updateScores();
+}
+
+document.querySelectorAll(".choice").forEach(btn=>{
+  btn.onclick=()=>play(btn.dataset.choice);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Guess The Number Test</title>
+<style>
+  :root{
+    --bg1:#0b1220; --bg2:#071021; --card:#0f172a; --muted:#9ca3af; --accent1:#7c3aed; --accent2:#4f46e5;
+    --success:#4ade80; --danger:#f97373; --glass: rgba(15,23,42,0.9);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+  html,body{height:100%}
+  body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:18px 12px;
+    background: radial-gradient(circle at 10% 10%, #0f172a 0%, #020617 60%);
+    color:#e6eef8;
+    overflow:visible;
+  }
+
+  .container{
+    width:100%;
+    max-width:920px;
+    max-height: calc(100vh - 36px);
+    display:flex;
+    flex-direction:column;
+    background:linear-gradient(180deg, rgba(12,17,29,0.96), rgba(8,11,18,0.96));
+    border:1px solid rgba(148,163,184,0.08);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 18px 40px rgba(2,6,23,0.6);
+    overflow:visible; /* allow content to flow without showing an inner scrollbar */
+    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; position:static; background:transparent; padding-top:6px; padding-bottom:6px}
+  .title h1{font-size:1.5rem;letter-spacing:0.03em;margin-left:6px}
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+  .select{background:var(--glass);color:inherit;border-radius:999px;padding:6px 10px;border:1px solid rgba(148,163,184,0.12);outline:none}
+  /* simplified pill: remove strong rounded "outer circle" look */
+  .pill{background:transparent;padding:4px 6px;border-radius:6px;border:0;font-size:0.9rem;color:var(--muted);display:inline-flex;align-items:center}
+
+  .main{display:grid;grid-template-columns:1fr;gap:16px;margin-top:14px;flex:1;overflow:visible}
+  @media (max-width: 520px){ .controls{flex-wrap:wrap;
+    }
+  }
+
+  .card{background:rgba(14,20,33,0.75);padding:14px;border-radius:12px;border:1px solid rgba(148,163,184,0.04)}
+  #game-card{display:flex;flex-direction:column;height:100%}
+  .message{min-height:46px;padding:10px;border-radius:10px;background:rgba(15,23,42,0.9);border:1px solid rgba(55,65,81,0.6);font-size:0.95rem;display:flex;flex-direction:column;gap:6px}
+  .message-main{font-size:0.98rem}
+  .message-sub{font-size:0.86rem;color:var(--muted)}
+  .message.success .message-main{color:var(--success)}
+  .message.error .message-main{color:var(--danger)}
+
+  .input-row{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+  input[type=number]{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(75,85,99,0.9);background:transparent;color:inherit;font-size:1rem;outline:none}
+  input[type=number]:focus{box-shadow:0 0 0 2px rgba(99,102,241,0.12)}
+  .btn{border:none;cursor:pointer;border-radius:999px;padding:10px 14px;font-weight:600;background:linear-gradient(135deg,var(--accent2),var(--accent1));color:#fff}
+  .btn.secondary{background:rgba(30,64,175,0.32);border:1px solid rgba(129,140,248,0.18);color:inherit}
+  .btn.danger{background:rgba(185,28,28,0.6);color:#fff}
+  .btn:active{transform:scale(.98)}
+  .small{font-size:0.85rem;padding:8px 10px}
+
+  .stats{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .stat{background:rgba(15,23,42,0.9);padding:6px 8px;border-radius:999px;border:1px solid rgba(55,65,81,0.6);font-size:0.85rem;color:var(--muted)}
+
+  .history{margin-top:12px;font-size:0.95rem;color:var(--muted)}
+  .history strong{font-weight:700;font-size:1.05rem;color:inherit}
+
+  .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .pad{color:#e6eef8;background:rgba(8,12,20,0.9);border-radius:10px;padding:12px;font-weight:700;border:1px solid rgba(75,85,99,0.6);cursor:pointer}
+  .pad:active{transform:translateY(1px)}
+
+  .side{display:flex;flex-direction:column;gap:12px}
+  .players{display:flex;flex-direction:column;gap:6px}
+  .player{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:10px;background:rgba(15,23,42,0.85);border:1px solid rgba(75,85,99,0.16)}
+  .player.current{box-shadow:0 6px 18px rgba(79,70,229,0.06);border-color:rgba(129,140,248,0.16)}
+  .player .name{font-weight:600}
+  .leaderboard table{width:100%;border-collapse:collapse}
+  .leaderboard th,.leaderboard td{padding:8px 6px;text-align:left;font-size:0.9rem;color:#dbeafe;border-bottom:1px dashed rgba(148,163,184,0.03)}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal{width:min(760px,96%);background:rgba(7,10,17,0.98);border-radius:12px;padding:16px;border:1px solid rgba(148,163,184,0.06)}
+  .modal h3{margin-bottom:8px}
+  .hidden{display:none !important}
+
+  .shake{animation:shake .28s}
+  @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}100%{transform:translateX(0)}}
+  .meter{height:8px;border-radius:999px;background:rgba(255,255,255,0.05);overflow:hidden}
+  .meter > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent1));width:0%}
+  .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+
+  /* small modal input styles */
+  .modal input[type="text"], .modal input[type="number"]{ width:100%; padding:8px; margin-top:8px; border-radius:8px; border:1px solid rgba(75,85,99,0.6); background:transparent; color:inherit; }
+  .modal-buttons{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+  .leaderboard-highlight{box-shadow:0 0 0 6px rgba(79,70,229,0.08);border-radius:8px;transition:box-shadow .35s ease}
+  /* hide scrollbars visually for modern browsers */
+  html, body { -ms-overflow-style: none; scrollbar-width: none; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar, .container::-webkit-scrollbar, .main::-webkit-scrollbar { display: none; width:0; height:0 }
+  /* ---------- HOME BUTTON ---------- */
+.back-btn{
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:3000;
+
+  padding:10px 18px;
+  font-size:0.95rem;
+  font-weight:600;
+
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+
+  background:rgba(8,12,20,0.85);
+  color:#e6eef8;
+  backdrop-filter:blur(8px);
+
+  box-shadow:0 6px 18px rgba(0,0,0,0.35);
+}
+.start-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,0.95);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+
+.start-card{
+  background:rgba(15,23,42,0.95);
+  padding:28px;
+  border-radius:16px;
+  text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,0.6);
+}
+
+.start-card h1{
+  margin-bottom:16px;
+}
+
+#gameWrapper{
+  display:none;
+}
+
+.back-btn:active{
+  transform:scale(0.95);
+}
+
+.back-btn .arrow{
+  display:inline-block;
+  transform:translateY(-2px);
+  margin-right:6px;
+}
+#gameWrapper .header{
+  margin-top: 28px;
+}
+ /* ---------- START OVERLAY ANIMATION ---------- */
+.start-overlay{
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity .25s ease, transform .25s ease;
+}
+
+.start-overlay.hide{
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+/* Keep Settings + Start Guessing together */
+#open-settings,
+#start-game{
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+ /* Keep Settings + Start Guessing together */
+.actions{
+  display:flex;
+  gap:8px;
+  flex-shrink:0;
+  white-space:nowrap;
+}
+</style>
+</head>
+<body>
+  <button class="back-btn" onclick="goHome()">
+  <span class="arrow">⬅</span> Home
+</button>
+<div id="startOverlay" class="start-overlay">
+  <div class="start-card">
+    <h1>Guess the Number</h1>
+    <button class="btn small" onclick="startGame()">Start Game</button>
+  </div>
+</div>
+<div id="gameWrapper">
+  <div class="container" role="application" aria-labelledby="title">
+    <div class="header">
+      <div class="title"><h1 id="title">Guess The Number</h1></div>
+
+      <div class="controls" aria-hidden="false">
+        <label class="pill" style="display:flex;align-items:center;gap:8px;">
+          Difficulty
+          <select id="difficulty" class="select" aria-label="Select difficulty">
+            <option value="1">Easiest (1–10)</option>
+            <option value="2">Simple (1–50)</option>
+            <option value="3" selected>Medium (1–100)</option>
+            <option value="4">Hard (1–200)</option>
+            <option value="5">Insane (1–500)</option>
+            <option value="auto">Auto</option>
+          </select>
+        </label>
+
+        <label class="pill" style="display:flex;align-items:center;gap:8px;">
+          Mode
+          <select id="mode" class="select" aria-label="Mode">
+            <option value="standard" selected>Standard</option>
+            <option value="time">Time attack</option>
+            <option value="sudden">Hardcore (sudden)</option>
+          </select>
+        </label>
+        <div class="actions">
+  <button id="open-settings" class="btn secondary small">Settings</button>
+  <button id="start-game" class="btn small">Start Guessing</button>
+</div>
+      </div>
+    </div>
+      <!-- Settings Modal -->
+      <div id="settings-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal">
+          <h3 id="settings-title">Settings</h3>
+          <div class="settings-options" style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+                <!-- removed toggles: simplified settings -->
+                <label style="display:flex;align-items:center;gap:10px;">Default difficulty
+                  <select id="pref-default-diff" class="select" style="margin-left:auto">
+                    <option value="1">Easiest (1–10)</option>
+                    <option value="2">Simple (1–50)</option>
+                    <option value="3">Medium (1–100)</option>
+                    <option value="4">Hard (1–200)</option>
+                    <option value="5">Insane (1–500)</option>
+                    <option value="auto">Auto</option>
+                  </select>
+                </label>
+
+                <!-- Admin / Player options (copied from Hangman) -->
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+                  <button id="setting-show-profile" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">👤 Show Profile</button>
+                  <button id="setting-show-leaderboard" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">🏆 Show Leaderboard</button>
+                  <button id="setting-select-player" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">🔁 Choose Player</button>
+                  <button id="setting-rename-player" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">✏️ Rename Player</button>
+                  <button id="setting-add-player" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">➕ Add Player</button>
+                  <button id="setting-remove-player" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">➖ Remove Player</button>
+                  <button id="setting-adjust-points" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">⚖️ Adjust Points</button>
+                  <button id="setting-end-session" class="btn secondary small" style="flex:1;min-width:180px;text-align:left">🛑 End Session</button>
+                  <button id="setting-end-game" class="btn secondary small" style="flex:1;min-width:180px;text-align:left;color:#fff;border-color:#ef444480">⛔ End Game</button>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:6px">
+                  <!-- reset & export removed -->
+                </div>
+                <div style="display:flex;gap:8px;margin-top:6px">
+                  <button id="setting-save" class="btn small" style="flex:1">Close</button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:6px;justify-content:flex-end">
+                  <button id="setting-close" class="btn secondary" style="border-color:#ef444480; color:#f9fafb;">Close</button>
+                </div>
+
+                <!-- Settings modal: per-settings leaderboard removed (uses modal instead) -->
+              </div>
+        </div>
+      </div>
+
+    <div class="main" id="main-grid">
+      <!-- left: game -->
+      <div class="card" id="game-card" aria-live="polite">
+        <div id="message" class="message">
+          <div id="message-main" class="message-main">Click <strong>Start Guessing</strong> to begin.</div>
+          <div id="message-sub" class="message-sub">You'll see closeness hints below when you guess (way off, close, very close...).</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <div class="pill" id="range-pill">Range: 1–100</div>
+          <div class="pill" id="attempts-pill">Attempts: 0 / 0</div>
+          <div class="pill" id="hints-pill">Hints used: 0 / 0</div>
+          <div class="pill" id="working-pill">Working: 1–100</div>
+        </div>
+
+        <div class="input-row" style="margin-top:12px">
+          <input type="number" id="guess-input" inputmode="numeric" aria-label="Enter your guess" placeholder="Enter guess..." disabled />
+          <button id="guess-btn" class="btn small" disabled>Guess</button>
+          <button id="hint-btn" class="btn secondary small" disabled>Hint</button>
+          <button id="quit-btn" class="btn danger small" disabled>Quit</button>
+        </div>
+
+        <div class="numpad" id="numpad" aria-hidden="true" style="margin-top:8px"></div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:0.9rem;color:var(--muted)">Score meter</div>
+            <div class="meter" aria-hidden="true" style="margin-top:6px"><i id="score-meter" style="width:0%"></i></div>
+          </div>
+          <div style="min-width:140px;display:flex;gap:8px;justify-content:flex-end">
+            <div class="stat" id="last-score">Last score: -</div>
+            <div class="stat" id="best-score">Best: -</div>
+          </div>
+        </div>
+        
+        <div class="history" id="history-list" style="margin-top:12px;color:var(--muted)"></div>
+
+      </div>
+
+      <!-- right: players / leaderboard -->
+      <div class="side">
+          <!-- Players panel removed from main screen per request -->
+
+        <!-- Leaderboard removed from side panel (use modal instead) -->
+
+        <!-- Profile card removed from side panel per request -->
+      </div>
+    </div>
+
+    <!-- Score breakdown modal -->
+    <div id="breakdown-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="breakdown-title">
+      <div class="modal" id="breakdown">
+        <h3 id="breakdown-title">Score breakdown</h3>
+        <pre id="breakdown-body" style="color:#cfe5ff; white-space:pre-wrap; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Helvetica Neue', monospace;"></pre>
+        <div class="modal-buttons">
+          <button id="breakdown-close" class="btn secondary small">Close</button>
+        </div>
+      </div>
+    </div>
+
+      <!-- Leaderboard modal (copied behavior from Hangman) -->
+      <!-- Leaderboard modal (restored) -->
+      <div id="leaderboard-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
+        <div class="modal">
+          <h3 id="leaderboard-title">Current Leaderboard</h3>
+          <div id="leaderboard-desc" style="margin-top:6px;color:var(--muted)">Current scores.</div>
+          <div style="margin-top:10px;">
+            <table id="leaderboard-modal-table" style="width:100%;border-collapse:collapse">
+              <thead><tr><th style="width:36px">#</th><th>Player</th><th style="width:72px">Points</th></tr></thead>
+              <tbody id="leaderboard-modal-body"><tr><td colspan="3" style="color:var(--muted)">No players to show.</td></tr></tbody>
+            </table>
+          </div>
+          <div class="modal-buttons">
+            <button id="leaderboard-close-btn" class="btn secondary">Close</button>
+          </div>
+        </div>
+      </div>
+
+    <!-- Players modal -->
+    <div id="players-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="players-modal-title">
+      <div class="modal">
+        <h3 id="players-modal-title">Players</h3>
+        <div style="margin-top:8px;color:var(--muted)">Add or edit players for this session.</div>
+        <div id="players-edit-list" style="margin-top:10px"></div>
+        <div class="modal-buttons">
+          <button id="players-cancel" class="btn secondary">Cancel</button>
+          <button id="players-ok" class="btn small">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROMPTS: session/input/player-select/confirm -->
+    <div id="session-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="session-title">
+        <h3 id="session-title">Previous session found</h3>
+        <div style="margin-top:8px; color:#9fb0d8;">Continue saved session or start a new one?</div>
+        <div class="modal-buttons">
+          <button id="session-new" class="btn small">New session</button>
+          <button id="session-continue" class="btn small">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="input-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="input-title">
+        <h3 id="input-title">Input</h3>
+        <div id="input-desc" style="margin-top:8px; color:#9fb0d8;"></div>
+        <input id="input-field" type="text" />
+        <div class="modal-buttons">
+          <button id="input-cancel" class="btn secondary">Cancel</button>
+          <button id="input-ok" class="btn small">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="player-select-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="player-select-title">
+        <h3 id="player-select-title">Who plays this round?</h3>
+        <div id="player-list" style="margin-top:8px; max-height:240px; overflow:auto; color:#cfe5ff;"></div>
+        <div id="player-select-desc" style="margin-top:8px; color:#9fb0d8; font-size:0.95rem;">Type player number or name (exact). Leave empty to keep current player.</div>
+        <input id="player-input" type="text" />
+        <div class="modal-buttons">
+          <button id="player-cancel" class="btn secondary">Cancel</button>
+          <button id="player-ok" class="btn small">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h3 id="confirm-title">Confirm</h3>
+        <div id="confirm-desc" style="margin-top:8px; color:#9fb0d8;"></div>
+        <div class="modal-buttons">
+          <button id="confirm-cancel" class="btn secondary">Cancel</button>
+          <button id="confirm-ok" class="btn small">Yes</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  // --- State & keys ---
+  const STORAGE_KEY = 'numgame_v2_state';
+  const MAX_RECENT = 8;
+
+  // DOM helpers
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // elements
+  const difficultySelect = $('#difficulty');
+  const modeSelect = $('#mode');
+  const startBtn = $('#start-game');
+  const setupPlayersBtn = $('#setup-players');
+  const choosePlayerBtn = $('#choose-player');
+
+  const guessInput = $('#guess-input');
+  const guessBtn = $('#guess-btn');
+  const hintBtn = $('#hint-btn');
+  const quitBtn = $('#quit-btn');
+  const numpadEl = $('#numpad');
+
+  const messageMainEl = $('#message-main');
+  const messageSubEl = $('#message-sub');
+  const messageWrap = $('#message');
+
+  const rangePill = $('#range-pill');
+  const attemptsPill = $('#attempts-pill');
+  const hintsPill = $('#hints-pill');
+  const workingPill = $('#working-pill');
+
+  const lastScoreEl = $('#last-score');
+  const bestScoreEl = $('#best-score');
+  const scoreMeter = $('#score-meter');
+
+  const historyList = $('#history-list');
+  const playersModal = $('#players-modal');
+  const playersEditList = $('#players-edit-list');
+  const playersOk = $('#players-ok');
+  const playersCancel = $('#players-cancel');
+
+  // profile summary element removed from DOM; renderProfile will return text instead
+
+  const breakdownModal = $('#breakdown-modal');
+  const breakdownBody = $('#breakdown-body');
+  const breakdownClose = $('#breakdown-close');
+
+  // leaderboard removed; profile button handled conditionally below
+
+  // prompt modals
+  const sessionModal = $('#session-modal');
+  const inputModal = $('#input-modal');
+  const inputField = $('#input-field');
+  const playerSelectModal = $('#player-select-modal');
+  const playerListEl = $('#player-list');
+  const playerInput = $('#player-input');
+  const confirmModal = $('#confirm-modal');
+  const confirmDesc = $('#confirm-desc');
+  // settings elements
+  const openSettingsBtn = $('#open-settings');
+  const settingsModalEl = $('#settings-modal');
+  const prefDefaultDiff = $('#pref-default-diff');
+  const settingSaveBtn = $('#setting-save');
+  const settingCloseBtn = $('#setting-close');
+  // Note: removed some settings controls (reset/export/view-stats) per request
+
+  // core game variables
+  let maxNumber = 100;
+  let secretNumber = null;
+  let attempts = 0;
+  let maxAttempts = 0;
+  let hintsUsed = 0;
+  let hintsMax = 2;
+  let hintCooldown = false;
+  let gameOver = true;
+  let workingMin = 1, workingMax = 100;
+
+  // scoring + profiles
+  let lastScore = null;
+  let bestScore = null;
+  let history = []; // last games
+  let recentScores = []; // for adaptive logic
+  let highscores = { "1": [], "2": [], "3": [], "4": [], "5": [] };
+
+  // players
+  let players = []; // {name, points}
+  let currentPlayerIndex = 0;
+
+  // adaptive EWMA
+  let ewma = null;
+
+  const specialNumbers = new Set([7,13,42,69,100,420]);
+
+  // ---------------- helpers ----------------
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  function setMessage(main, sub = '', type = ''){
+    messageMainEl.textContent = main;
+    messageSubEl.textContent = sub || '';
+    messageWrap.className = 'message';
+    if(type === 'success') messageWrap.classList.add('success');
+    if(type === 'error'){ messageWrap.classList.add('error','shake'); setTimeout(()=>messageWrap.classList.remove('shake'),280); }
+  }
+  const saveState = ()=>{
+    try{
+      const data = {players, currentPlayerIndex, history:history.slice(-50), highscores, recentScores, bestScore, ewma,
+        // persist runtime state for exact resume
+        secretNumber, attempts, maxAttempts, hintsUsed, hintsMax, gameOver, workingMin, workingMax, maxNumber, mode: modeSelect && modeSelect.value
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }catch(e){ console.warn('save failed',e) }
+  };
+  const loadState = ()=>{
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return false;
+      const s = JSON.parse(raw);
+      if(s.players) players = s.players;
+      currentPlayerIndex = s.currentPlayerIndex || 0;
+      history = Array.isArray(s.history)? s.history : [];
+      highscores = s.highscores || highscores;
+      recentScores = s.recentScores || [];
+      bestScore = typeof s.bestScore === 'number' ? s.bestScore : bestScore;
+      ewma = typeof s.ewma === 'number' ? s.ewma : (s.ewma === null ? null : ewma);
+      // restore runtime fields if present and valid
+      if(typeof s.secretNumber === 'number') secretNumber = s.secretNumber;
+      if(typeof s.attempts === 'number') attempts = s.attempts;
+      if(typeof s.maxAttempts === 'number') maxAttempts = s.maxAttempts;
+      if(typeof s.hintsUsed === 'number') hintsUsed = s.hintsUsed;
+      if(typeof s.hintsMax === 'number') hintsMax = s.hintsMax;
+      if(typeof s.gameOver === 'boolean') gameOver = s.gameOver;
+      if(typeof s.workingMin === 'number') workingMin = s.workingMin;
+      if(typeof s.workingMax === 'number') workingMax = s.workingMax;
+      if(typeof s.maxNumber === 'number') maxNumber = s.maxNumber;
+      if(s.mode && modeSelect) modeSelect.value = s.mode;
+      return true;
+    }catch(e){ return false; }
+  };
+  const clearState = ()=>{
+    localStorage.removeItem(STORAGE_KEY);
+    players = []; currentPlayerIndex = 0; history=[]; highscores = { "1": [], "2": [], "3": [], "4": [], "5": [] }; recentScores=[]; ewma=null; lastScore=null; bestScore=null;
+    renderPlayers(); renderHistory(); renderLeaderboards(); renderProfile();
+  };
+
+  // --- Preferences (persisted) ---
+  let prefs = { numpad: true, confirmQuit: true, defaultDiff: '3' };
+  const PREF_KEY = 'numgame_v2_prefs';
+  function loadPrefs(){
+    try{
+      const raw = localStorage.getItem(PREF_KEY);
+      if(!raw) return;
+      const p = JSON.parse(raw);
+      prefs = Object.assign(prefs, p || {});
+    }catch(e){ console.warn('prefs load failed', e); }
+  }
+  function savePrefs(){
+    try{ localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }catch(e){ console.warn('prefs save failed', e); }
+  }
+  function applyPrefs(){
+    try{
+      if(prefDefaultDiff) prefDefaultDiff.value = prefs.defaultDiff || '3';
+      // apply default difficulty (do not force when in-game)
+      if(difficultySelect && prefs.defaultDiff){ difficultySelect.value = prefs.defaultDiff; setDifficultyFromSelect(); }
+      updateStatusUI();
+    }catch(e){ console.warn('applyPrefs err', e); }
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ---------------- Prompt modal utilities ----------------
+  // Show a modal given its backdrop element (the more complete implementation)
+  function showModal(el){
+    if(!el) return;
+    el.classList.remove('hidden');
+    el.setAttribute('aria-hidden','false');
+    // focus first focusable element in modal
+    try{
+      const modal = el.querySelector('.modal') || el;
+      const first = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if(first) first.focus();
+      // add escape-to-close handler specific to this backdrop
+      const onKey = (ev)=>{ if(ev.key === 'Escape'){ hideModal(el); modal.removeEventListener('keydown', onKey); } };
+      modal.addEventListener('keydown', onKey);
+    }catch(e){}
+  }
+  function hideModal(el){ if(!el) return; el.classList.add('hidden'); el.setAttribute('aria-hidden','true'); }
+
+  function showSessionPrompt(){
+    return new Promise(resolve=>{
+      showModal(sessionModal);
+      // ensure the Continue button is focused for quick resume
+      setTimeout(()=>{ const cbtn = document.getElementById('session-continue'); if(cbtn) cbtn.focus(); }, 30);
+      const onNew = ()=>{ cleanup(); resolve(false); };
+      const onCont = ()=>{ cleanup(); resolve(true); };
+      function cleanup(){ hideModal(sessionModal); $('#session-new').removeEventListener('click', onNew); $('#session-continue').removeEventListener('click', onCont); }
+      $('#session-new').addEventListener('click', onNew);
+      $('#session-continue').addEventListener('click', onCont);
+    });
+  }
+
+  function showInput({title='Input',desc='',placeholder='',defaultValue=''}={}){
+    return new Promise(resolve=>{
+      $('#input-title').textContent = title;
+      $('#input-desc').textContent = desc;
+      inputField.placeholder = defaultValue || placeholder || '';
+      inputField.value = '';
+      showModal(inputModal);
+      const onOk = ()=>{ cleanup(); resolve(String(inputField.value)); };
+      const onCancel = ()=>{ cleanup(); resolve(null); };
+      function onKey(e){ if(e.key==='Enter') onOk(); if(e.key==='Escape') onCancel(); }
+      function cleanup(){ hideModal(inputModal); $('#input-ok').removeEventListener('click', onOk); $('#input-cancel').removeEventListener('click', onCancel); inputField.removeEventListener('keydown', onKey); }
+      $('#input-ok').addEventListener('click', onOk);
+      $('#input-cancel').addEventListener('click', onCancel);
+      inputField.addEventListener('keydown', onKey);
+      setTimeout(()=>inputField.focus(),40);
+    });
+  }
+
+  function showPlayerSelect(list, opts={}){
+    // opts: {title, desc, placeholder}
+    return new Promise(resolve=>{
+      playerListEl.innerHTML = list.map((p,i)=>`<div style="padding:6px 0">${i+1}. <strong>${escapeHtml(p.name)}</strong> (${p.points} pts)</div>`).join('');
+      playerInput.value = '';
+      // set optional title/desc
+      if(opts.title) $('#player-select-title').textContent = opts.title; else $('#player-select-title').textContent = 'Who plays this round?';
+      if(opts.desc) { const descEl = $('#player-select-desc'); if(descEl) descEl.textContent = opts.desc; }
+      if(opts.placeholder) playerInput.placeholder = opts.placeholder; else playerInput.placeholder = 'Type player number or name (exact). Leave empty to keep current player.';
+      showModal(playerSelectModal);
+      const onOk = ()=>{ cleanup(); resolve(playerInput.value.trim()); };
+      const onCancel = ()=>{ cleanup(); resolve(null); };
+      function onKey(e){ if(e.key==='Enter') onOk(); if(e.key==='Escape') onCancel(); }
+      function cleanup(){ hideModal(playerSelectModal); $('#player-ok').removeEventListener('click', onOk); $('#player-cancel').removeEventListener('click', onCancel); playerInput.removeEventListener('keydown', onKey); }
+      $('#player-ok').addEventListener('click', onOk);
+      $('#player-cancel').addEventListener('click', onCancel);
+      playerInput.addEventListener('keydown', onKey);
+      setTimeout(()=>playerInput.focus(),40);
+    });
+  }
+
+  function showConfirm(opts={title:'Confirm',desc:'Are you sure?'}){
+    return new Promise(resolve=>{
+      $('#confirm-title').textContent = opts.title;
+      confirmDesc.textContent = opts.desc;
+      showModal(confirmModal);
+      const onOk = ()=>{ cleanup(); resolve(true); };
+      const onCancel = ()=>{ cleanup(); resolve(false); };
+      function cleanup(){ hideModal(confirmModal); $('#confirm-ok').removeEventListener('click', onOk); $('#confirm-cancel').removeEventListener('click', onCancel); }
+      $('#confirm-ok').addEventListener('click', onOk);
+      $('#confirm-cancel').addEventListener('click', onCancel);
+    });
+  }
+
+  // ---------- Player setup using the prompt utilities ----------
+  async function askPlayerCount(){
+    while(true){
+      const res = await showInput({title:'How many players?',desc:'Enter number like 1,2,3',placeholder:'Number of players',defaultValue:'1'});
+      if(res === null) return 1;
+      if(String(res).trim() === '') return 1;
+      const n = parseInt(String(res).trim(),10);
+      if(!isNaN(n) && n>=1) return n;
+      await showInput({title:'Invalid',desc:'Please enter a valid number (1 or more)', defaultValue:''});
+    }
+  }
+
+  async function setupPlayers(){
+    const count = await askPlayerCount();
+    players = [];
+    const used = new Set();
+    for(let i=0;i<count;i++){
+      while(true){
+        const name = await showInput({title:`Player ${i+1} name`,desc:'Enter unique name (leave empty to use default)',defaultValue:`Player ${i+1}`, placeholder:`Player ${i+1}`});
+        if(name === null){
+          const def = `Player ${i+1}`;
+          players.push({name:def,points:0});
+          used.add(def.toLowerCase());
+          break;
+        }
+        let clean = String(name).trim();
+        if(!clean) clean = `Player ${i+1}`;
+        const key = clean.toLowerCase();
+        if(used.has(key)){ await showInput({title:'Duplicate',desc:'Name taken. Choose another.'}); continue; }
+        used.add(key);
+        players.push({name:clean,points:0});
+        break;
+      }
+    }
+    currentPlayerIndex = 0;
+    renderPlayers(); renderLeaderboards(); renderProfile();
+    saveState();
+  }
+
+  async function choosePlayerForRound(){
+    if(!players.length) return;
+    const input = await showPlayerSelect(players);
+    if(input === null) return;
+    if(input.trim() === '') return;
+    const trimmed = input.trim();
+    const num = parseInt(trimmed,10);
+    let idx = -1;
+    if(!isNaN(num) && num>=1 && num<=players.length) idx = num-1;
+    else idx = players.findIndex(p=>p.name.toLowerCase()===trimmed.toLowerCase());
+    if(idx === -1){ await showInput({title:'Not found',desc:'No player found with that name/number.'}); return choosePlayerForRound(); }
+    currentPlayerIndex = idx;
+    renderPlayers(); renderLeaderboards(); saveState();
+  }
+
+  // ---------------- remaining game logic ----------------
+  function getMaxNumberFromLevel(level){
+    switch(level){
+      case "1": return 10;
+      case "2": return 50;
+      case "3": return 100;
+      case "4": return 200;
+      case "5": return 500;
+      default: return 100;
+    }
+  }
+  function difficultyMultiplierSmooth(maxNum){
+    return 1 + Math.log2(Math.max(2, maxNum)) / 12;
+  }
+  function computeAutoLevel(){
+    const base = (ewma !== null) ? ewma : (recentScores.length ? (recentScores.reduce((a,b)=>a+b,0)/recentScores.length) : null);
+    if(base === null) return "3";
+    if(base >= 90) return "5";
+    if(base >= 75) return "4";
+    if(base >= 45) return "3";
+    if(base >= 25) return "2";
+    return "1";
+  }
+
+  function setDifficultyFromSelect(){
+    const val = difficultySelect.value;
+    if(val === 'auto'){
+      const level = computeAutoLevel();
+      maxNumber = getMaxNumberFromLevel(level);
+      rangePill.textContent = `Range: 1–${maxNumber} (Auto → ${level})`;
+    } else {
+      maxNumber = getMaxNumberFromLevel(val);
+      rangePill.textContent = `Range: 1–${maxNumber}`;
+    }
+    if(secretNumber === null || gameOver){ workingMin = 1; workingMax = maxNumber; }
+    else { workingMax = Math.max(workingMax, maxNumber); }
+    workingPill.textContent = `Working: ${workingMin}–${workingMax}`;
+  }
+
+ function computeMaxAttempts(){
+  const base = Math.ceil(Math.log2(maxNumber));
+  if(modeSelect.value === 'time') return base + 1;
+  if(modeSelect.value === 'sudden') return Math.max(2, base - 1);
+  return base;
+}
+
+  let lastDiff = null;
+  let closenessStreak = 0;
+
+  function startNewGame(){
+    setDifficultyFromSelect();
+    secretNumber = Math.floor(Math.random() * maxNumber) + 1;
+    // debug: log secret when a new game starts
+    try{ console.log('secretNumber (new game):', secretNumber); }catch(e){}
+    attempts = 0;
+    maxAttempts = computeMaxAttempts();
+    hintsUsed = 0;
+    hintsMax = getMaxHintsForCurrent();
+    gameOver = false;
+    workingMin = 1; workingMax = maxNumber;
+    lastDiff = null; closenessStreak = 0;
+    guessInput.value = '';
+    // enable input controls for numpad-driven input only
+    guessInput.disabled = false; guessBtn.disabled = false; hintBtn.disabled = false; quitBtn.disabled = false;
+ 
+    numpadEl.setAttribute('aria-hidden','false');
+    renderPlayers(); renderLeaderboards();
+    setMessage(`New game started — guess a number between 1 and ${maxNumber}.`, `You have ${maxAttempts} attempts.`);
+    updateStatusUI();
+    saveState();
+    // focus to numpad for mobile users
+    guessBtn.focus();
+  }
+
+  function getMaxHintsForCurrent(){
+    const lvl = difficultySelect.value === 'auto' ? computeAutoLevel() : difficultySelect.value;
+    if(lvl === '1') return 3;
+    if(lvl === '2') return 2;
+    if(lvl === '3') return 2;
+    if(lvl === '4') return 2;
+    if(lvl === '5') return 1;
+    return 2;
+  }
+
+  function updateStatusPills(){
+    attemptsPill.textContent = `Attempts: ${attempts} / ${maxAttempts}`;
+    hintsPill.textContent = `Hints used: ${hintsUsed} / ${hintsMax}`;
+    lastScoreEl.textContent = lastScore===null ? 'Last score: -' : `Last score: ${lastScore}`;
+    bestScoreEl.textContent = bestScore===null ? 'Best: -' : `Best: ${bestScore}`;
+    scoreMeter.style.width = `${clamp(lastScore || 0,0,100)}%`;
+  }
+
+  function renderHistory(){
+    // Show current player's turn like Hangman: "Player X is guessing..."
+    if(players.length){
+      const name = (players[currentPlayerIndex] && players[currentPlayerIndex].name) ? players[currentPlayerIndex].name : `Player ${currentPlayerIndex+1}`;
+      historyList.innerHTML = `<div style="padding:6px 0;color:var(--muted)"><strong>${escapeHtml(name)}</strong> is guessing…</div>`;
+      return;
+    }
+    // leave empty when there is no history or players
+    historyList.textContent = '';
+  }
+  function renderPlayers(){
+    const playersListEl = $('#players-list');
+    if(!playersListEl) return; // players panel removed — nothing to render
+    if(!players.length){ playersListEl.innerHTML = '<div style="color:var(--muted)">No players — single player by default.</div>'; return; }
+    playersListEl.innerHTML = players.map((p,i)=>{
+      const cls = i===currentPlayerIndex ? 'player current' : 'player';
+      return `<div class="${cls}" role="listitem" style="margin-top:6px;padding:8px;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:700">${escapeHtml(p.name)}</div><div style="font-size:0.85rem;color:var(--muted)">Points: ${p.points}</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn small" data-idx="${i}" data-action="set-active">Set</button>
+          <button class="btn secondary small" data-idx="${i}" data-action="edit">Edit</button>
+        </div>
+      </div>`;
+    }).join('');
+    // attach handlers after DOM update
+    playersListEl.querySelectorAll('button[data-action]').forEach(b=>{
+      b.addEventListener('click', (e)=>{
+        const idx = Number(b.dataset.idx);
+        const action = b.dataset.action;
+        if(action==='set'){ currentPlayerIndex = idx; setMessage(`Turn: ${players[currentPlayerIndex].name}`,''); saveState(); renderPlayers(); renderProfile(); }
+        if(action==='edit'){ openPlayersModal(players, idx); }
+      });
+    });
+  }
+
+  function renderLeaderboards(){
+    const sorted = players.slice().sort((a,b)=>b.points - a.points);
+    const bodyEl = $('#leaderboard-modal-body');
+    if(!bodyEl){
+      return; // modal not present
+    }
+    if(!players.length){
+      bodyEl.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">No players to show.</td></tr>';
+      return;
+    }
+    bodyEl.innerHTML = sorted.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.points}</td></tr>`).join('');
+  }
+
+  function renderProfile(){
+    // Build a textual profile summary and optionally write to DOM if element exists
+    if(!players.length){
+      const txt = 'No players — add players to get a profile.';
+      const el = $('#profile-summary'); if(el) el.textContent = txt;
+      return txt;
+    }
+    const idx = currentPlayerIndex;
+    const player = players[idx] || {name: `Player ${idx+1}`};
+    const ph = history.filter(h=>h.player === idx);
+    if(ph.length < 3){
+      const txt = `Play a few rounds as ${player.name} to get a summary...`;
+      const el = $('#profile-summary'); if(el) el.textContent = txt;
+      return txt;
+    }
+    const totalGames = ph.length;
+    const wins = ph.filter(h=>h.win).length;
+    const avgScore = Math.round(ph.reduce((s,h)=>s + (h.score||0),0)/totalGames);
+    const avgHints = (ph.reduce((s,h)=>s + (h.hints||0),0) / totalGames).toFixed(1);
+    const winRate = Math.round((wins/totalGames)*100);
+    let style = '';
+    if(winRate>=70 && avgScore>=80 && avgHints<=1) style = 'Sharpshooter — high scores, low hints.';
+    else if(winRate>=70) style = 'Safe Solver — you win often, consider increasing difficulty.';
+    else if(winRate<40 && avgScore<40) style = 'Chaos Guesser — try using binary strategy: split the range.';
+    else style = 'Balanced — mix of risk and control.';
+    const summary = `${player.name}: ${style} — Games: ${totalGames}, Win rate: ${winRate}%, Avg score: ${avgScore}, Avg hints: ${avgHints}`;
+    const el = $('#profile-summary'); if(el) el.textContent = summary;
+    return summary;
+  }
+
+  // ---------------- Game logic ----------------
+  function handleGuess(){
+    if(gameOver || secretNumber === null) return;
+    const raw = guessInput.value.trim();
+    const guess = parseInt(raw, 10);
+    if(isNaN(guess)){
+      setMessage('Please enter a valid number.', '','error');
+      guessInput.classList.add('shake');
+      setTimeout(()=>guessInput.classList.remove('shake'),280);
+      return;
+    }
+    if(guess < 1 || guess > maxNumber){
+      setMessage(`Guess must be between 1 and ${maxNumber}.`, '', 'error');
+      return;
+    }
+
+    attempts++;
+    const diff = Math.abs(guess - secretNumber);
+    let closeness = '';
+    if(guess !== secretNumber){
+      if(diff <= maxNumber * 0.02) closeness = '🔥 Super close!';
+      else if(diff <= maxNumber * 0.05) closeness = 'Very close.';
+      else if(diff <= maxNumber * 0.15) closeness = 'Close.';
+      else closeness = 'Way off.';
+      if(lastDiff === null || diff < lastDiff) closenessStreak++;
+      else closenessStreak = 1;
+      lastDiff = diff;
+      if(modeSelect.value === 'sudden' && difficultySelect.value === '5' && diff > maxNumber * 0.4){
+        attempts++; closeness += ' (Hardcore: big miss cost an extra attempt.)';
+      }
+    }
+
+    updateStatusUI();
+
+    if(guess === secretNumber){
+      const hadComboBonus = closenessStreak >= 3;
+      const isSecretBonus = specialNumbers.has(secretNumber) && attempts === 1;
+      // compute final score and breakdown info
+      const computed = computeScoreAndBreakdown(isSecretBonus, hadComboBonus);
+      const score = computed.score;
+      const breakdown = computed.breakdown;
+      lastScore = score;
+      if(bestScore === null || score > bestScore) bestScore = score;
+      const diffVal = difficultySelect.value;
+      history.push({ difficulty: diffVal, win: true, score, hints: hintsUsed, attempts, player: currentPlayerIndex });
+      recentScores.push(score); if(recentScores.length>5) recentScores = recentScores.slice(-5);
+
+      // Add final score directly to player's points (this is the key change)
+      if(players.length){
+        const cur = players[currentPlayerIndex];
+        cur.points = (Number(cur.points)||0) + score;
+      }
+
+      // update highscores per difficulty (unchanged)
+      if(score > 0){
+        const key = diffVal === 'auto' ? computeAutoLevel() : diffVal;
+        highscores[key] = highscores[key] || [];
+        highscores[key].push({score, date: (new Date()).toLocaleDateString()});
+        highscores[key].sort((a,b)=>b.score - a.score);
+        highscores[key] = highscores[key].slice(0,5);
+      }
+
+      updateEwma(score);
+      gameOver = true;
+      guessInput.disabled = true; guessBtn.disabled = true; hintBtn.disabled = true; quitBtn.disabled = true;
+      numpadEl.setAttribute('aria-hidden','true');
+
+      // show breakdown including "Points added this round" and "New total points"
+      const playerNewTotal = players.length ? players[currentPlayerIndex].points : null;
+      const extraLines = `Points added this round: ${score}` + (playerNewTotal !== null ? `\nNew total points: ${playerNewTotal}` : '');
+      showBreakdown(breakdown + '\n' + extraLines);
+
+      setMessage(`${players.length ? players[currentPlayerIndex].name + ' — ' : ''}Correct! The number was ${secretNumber}.`, `Score: ${score}`);
+      rotatePlayer();
+      updateStatusUI();
+      saveState();
+      if(difficultySelect.value === 'auto') performAutoAdjustmentPostRound();
+    } else {
+      if(guess < secretNumber) setMessage('Too low. Try a higher number.', closeness);
+      else setMessage('Too high. Try a lower number.', closeness);
+
+      if(attempts >= maxAttempts){
+        const score = 0;
+        history.push({ difficulty: difficultySelect.value, win: false, score, hints: hintsUsed, attempts, player: currentPlayerIndex });
+        if(players.length){
+          const cur = players[currentPlayerIndex];
+          const loss = Math.round(10 + (maxNumber/100));
+          cur.points = Math.max(0, (Number(cur.points)||0) - loss);
+        }
+        updateEwma(0);
+        gameOver = true;
+        guessInput.disabled = true; guessBtn.disabled = true; hintBtn.disabled = true; quitBtn.disabled = true;
+        numpadEl.setAttribute('aria-hidden','true');
+        setMessage(`Game Over. The number was ${secretNumber}.`, '');
+        rotatePlayer();
+        updateStatusUI();
+        saveState();
+        if(difficultySelect.value === 'auto') performAutoAdjustmentPostRound();
+      }
+    }
+
+    guessInput.value = '';
+  }
+
+  function handleHint(){
+    if(gameOver || secretNumber === null) return;
+    if(hintCooldown){ setMessage('Hint cooling down — wait a moment.', '', 'error'); return; }
+    const MAX_HINTS = hintsMax;
+    if(hintsUsed >= MAX_HINTS){ setMessage("No more hints available for this difficulty.", '', 'error'); return; }
+    hintsUsed++;
+    hintCooldown = true;
+    setTimeout(()=> hintCooldown = false, 800);
+
+    let main = '', sub = '';
+    if(hintsUsed === 1){
+      const parity = secretNumber % 2 === 0 ? 'even' : 'odd';
+      const mid = Math.floor(maxNumber/2);
+      const relation = secretNumber > mid ? `greater than ${mid}` : `less than or equal to ${mid}`;
+      main = `Hint 1: The number is ${parity}.`;
+      sub = `It is ${relation}.`;
+    } else if(hintsUsed === 2 || hintsMax === 1){
+      const span = Math.max(1, Math.floor(maxNumber/5));
+      const lower = Math.max(1, secretNumber - span);
+      const upper = Math.min(maxNumber, secretNumber + span);
+      workingMin = Math.max(workingMin, lower);
+      workingMax = Math.min(workingMax, upper);
+      main = `Hint ${hintsUsed}: The number is between ${lower} and ${upper}.`;
+      sub = `Working range updated.`;
+    } else {
+      const isMul3 = secretNumber % 3 === 0;
+      const isMul5 = secretNumber % 5 === 0;
+      let extra = 'not a multiple of 3 or 5.';
+      if(isMul3 && isMul5) extra = 'a multiple of both 3 and 5.';
+      else if(isMul3) extra = 'a multiple of 3.';
+      else if(isMul5) extra = 'a multiple of 5.';
+      main = `Hint ${hintsUsed}: Extra clue.`;
+      sub = `The number is ${extra}`;
+    }
+
+    setMessage(main, sub);
+    updateStatusUI();
+    saveState();
+  }
+
+  function rotatePlayer(){
+    if(players.length > 1){
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      setMessage(`Next turn: ${players[currentPlayerIndex].name}`, '');
+      renderPlayers();
+    }
+  }
+
+  function updateEwma(score){
+    if(ewma === null) ewma = score;
+    else ewma = ewma * 0.6 + score * 0.4;
+  }
+
+  // computeScoreAndBreakdown returns final score and a readable breakdown string
+  function computeScoreAndBreakdown(isSecretBonus, hadComboBonus){
+    const boost = difficultyMultiplierSmooth(maxNumber);
+    const attemptsPenaltyPerTry = maxAttempts>0 ? 60 / maxAttempts : 0;
+    const attemptsPenalty = (attempts - 1) * attemptsPenaltyPerTry;
+    const hintsPenalty = hintsUsed * 10;
+    let base = 100 - attemptsPenalty - hintsPenalty;
+    let breakdownParts = [];
+    breakdownParts.push(`Base: 100`);
+    breakdownParts.push(`Attempts penalty: -${Math.round(attemptsPenalty)}`);
+    breakdownParts.push(`Hints penalty: -${Math.round(hintsPenalty)}`);
+    let comboBonus = 0;
+    if(hadComboBonus){
+      comboBonus = 10;
+      base += comboBonus;
+      breakdownParts.push(`Combo bonus: +${comboBonus}`);
+    }
+    if(isSecretBonus){
+      const b = 10;
+      base += b;
+      breakdownParts.push(`Secret bonus: +${b}`);
+    }
+    if(base < 0) base = 0;
+    const preBoost = Math.round(base);
+    const final = Math.round(preBoost * boost);
+    breakdownParts.push(`Pre-boost: ${preBoost}`);
+    breakdownParts.push(`Difficulty ×${boost.toFixed(2)}`);
+    const breakdown = breakdownParts.join(' | ');
+    return { score: final, breakdown };
+  }
+
+  function showBreakdown(text){
+    breakdownBody.textContent = text;
+    breakdownModal.classList.remove('hidden');
+    breakdownModal.querySelector('.modal').focus();
+  }
+  breakdownClose.addEventListener('click', ()=> breakdownModal.classList.add('hidden'));
+
+  // players modal handlers
+  function openPlayersModal(current, editIndex = null){
+    playersEditList.innerHTML = '';
+    const arr = current && current.length ? current : [];
+    const list = arr.map((p,i)=>({ name: p.name || `Player ${i+1}`, points: Number(p.points || 0) }));
+    if(list.length === 0) list.push({name: 'Player 1', points: 0});
+    list.push({name:'', points:0});
+    list.forEach((p,i)=>{
+      const id = `player-edit-${i}`;
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.gap = '8px';
+      wrapper.style.marginTop = '8px';
+      wrapper.innerHTML = `<input id="${id}-name" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(75,85,99,0.6);background:transparent;color:inherit" placeholder="Name" value="${escapeHtml(p.name)}">
+        <input id="${id}-points" type="number" style="width:84px;padding:8px;border-radius:8px;border:1px solid rgba(75,85,99,0.6);background:transparent;color:inherit" value="${p.points}">`;
+      playersEditList.appendChild(wrapper);
+    });
+    playersModal.classList.remove('hidden');
+    // focus the edited player's name input if editIndex provided
+    if(typeof editIndex === 'number' && editIndex >= 0){
+      setTimeout(()=>{
+        const el = document.getElementById(`player-edit-${editIndex}-name`);
+        if(el) el.focus();
+      }, 30);
+    } else {
+      // otherwise focus the last (blank) name input so user can quickly add
+      setTimeout(()=>{
+        const nodes = playersEditList.querySelectorAll('input[id$="-name"]');
+        const last = nodes[nodes.length-1];
+        if(last) last.focus();
+      }, 30);
+    }
+
+    const onOk = ()=>{
+      const nodes = playersEditList.querySelectorAll('div');
+      // If editing a specific index, update that player; otherwise replace full list
+      if(typeof editIndex === 'number' && editIndex >= 0){
+        const nameEl = document.querySelector(`#player-edit-${editIndex}-name`);
+        const ptsEl = document.querySelector(`#player-edit-${editIndex}-points`);
+        const nm = nameEl ? nameEl.value.trim() : '';
+        const pts = ptsEl ? Number(ptsEl.value || 0) : 0;
+        if(nm){
+          players[editIndex] = { name: nm, points: pts };
+        }
+      } else {
+        const newPlayers = [];
+        nodes.forEach((node, idx)=>{
+          const nm = node.querySelector(`#player-edit-${idx}-name`).value.trim();
+          const pts = Number(node.querySelector(`#player-edit-${idx}-points`).value || 0);
+          if(nm) newPlayers.push({name: nm, points: pts});
+        });
+        if(newPlayers.length === 0 && players.length === 0) newPlayers.push({name:'Player 1', points:0});
+        players = newPlayers;
+      }
+      if(currentPlayerIndex >= players.length) currentPlayerIndex = 0;
+      playersModal.classList.add('hidden');
+      renderPlayers();
+      renderLeaderboards();
+      saveState();
+    };
+    const onCancel = ()=> { playersModal.classList.add('hidden'); };
+    playersOk.onclick = onOk;
+    playersCancel.onclick = onCancel;
+  }
+
+  // --- Admin / cross-file compatible actions ---
+  function showProfile(){
+    if(!players.length) return showBreakdown('No players to show.');
+    const txt = renderProfile();
+    showBreakdown(txt || 'No profile data.');
+  }
+
+  function showLeaderboard(isFinal = false){
+    renderLeaderboards();
+    const sorted = players.slice().sort((a,b)=>b.points - a.points);
+    const modal = $('#leaderboard-modal');
+    if(!modal){
+      if(!players.length){ showBreakdown('No players to show.'); return; }
+      const rows = sorted.map((p,i)=>`${i+1}. ${p.name} — ${p.points}`).join('\n');
+      showBreakdown((isFinal? 'Final' : 'Current') + ' leaderboard:\n' + rows);
+      return;
+    }
+    $('#leaderboard-title').textContent = isFinal ? 'Final Leaderboard' : 'Current Leaderboard';
+    $('#leaderboard-desc').textContent = isFinal ? 'Final scores.' : 'Current scores.';
+    const bodyEl = $('#leaderboard-modal-body');
+    if(!players.length){ bodyEl.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">No players to show.</td></tr>'; }
+    else { bodyEl.innerHTML = sorted.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.points}</td></tr>`).join(''); }
+    showModal(modal);
+    const closeBtn = $('#leaderboard-close-btn'); if(closeBtn) closeBtn.onclick = ()=> hideModal(modal);
+  }
+
+  function selectNextPlayer(){
+    return choosePlayerForRound();
+  }
+
+  function renamePlayer(){
+    if(!players.length) return showBreakdown('No players to rename.');
+    (async ()=>{
+      const cur = players[currentPlayerIndex];
+      const newName = await showInput({title:'Rename player', desc:'Enter new name', defaultValue: cur.name});
+      if(newName === null) return;
+      const clean = String(newName).trim();
+      if(!clean) return showBreakdown('Name cannot be empty.');
+      cur.name = clean;
+      renderPlayers(); renderLeaderboards(); saveState();
+    })();
+  }
+
+  function addPlayer(){
+    (async ()=>{
+      const name = await showInput({title:'Add player', desc:'Enter player name', placeholder:'Player name', defaultValue:''});
+      if(name === null) return;
+      const clean = String(name).trim() || `Player ${players.length+1}`;
+      players.push({name: clean, points: 0});
+      renderPlayers(); renderLeaderboards(); saveState();
+    })();
+  }
+
+  async function removePlayer(){
+    if(!players.length) return showBreakdown('No players to remove.');
+    const input = await showPlayerSelect(players, {title:'Remove player', desc:'Type player number or name to remove.', placeholder:'e.g. 1 or Alice'});
+    if(input === null) return;
+    const trimmed = input.trim();
+    if(trimmed === '') return;
+    const num = parseInt(trimmed,10);
+    let idx = -1;
+    if(!isNaN(num) && num>=1 && num<=players.length) idx = num-1;
+    else idx = players.findIndex(p=>p.name.toLowerCase()===trimmed.toLowerCase());
+    if(idx === -1){ await showInput({title:'Not found',desc:'No player found with that name/number.'}); return; }
+    players.splice(idx,1);
+    if(currentPlayerIndex >= players.length) currentPlayerIndex = 0;
+    renderPlayers(); renderLeaderboards(); saveState();
+  }
+
+  async function adjustPlayerPoints(){
+    if(!players.length) return showBreakdown('No players to adjust.');
+    const input = await showPlayerSelect(players, {title:'Adjust player points', desc:'Type player number or name to adjust points for.', placeholder:'e.g. 1 or Alice'});
+    if(input === null) return;
+    const trimmed = input.trim();
+    if(trimmed === '') return;
+    const num = parseInt(trimmed,10);
+    let idx = -1;
+    if(!isNaN(num) && num>=1 && num<=players.length) idx = num-1;
+    else idx = players.findIndex(p=>p.name.toLowerCase()===trimmed.toLowerCase());
+    if(idx === -1){ await showInput({title:'Not found',desc:'No player found with that name/number.'}); return; }
+    const deltaStr = await showInput({title:'Adjust points', desc:'Enter points to add (use negative to subtract)', placeholder:'e.g. 10 or -5'});
+    if(deltaStr === null) return;
+    const delta = parseInt(deltaStr,10);
+    if(isNaN(delta)) return showBreakdown('Invalid number');
+    players[idx].points = Math.max(0, (Number(players[idx].points)||0) + delta);
+    renderPlayers(); renderLeaderboards(); saveState();
+  }
+
+  function endSession(){
+    saveState();
+    setMessage('Session saved.');
+  }
+
+  function endGame(){
+    // mark the current run ended and show final leaderboard without clearing saved session
+    gameOver = true;
+    secretNumber = null;
+    guessInput.disabled = true; guessBtn.disabled = true; hintBtn.disabled = true; quitBtn.disabled = true;
+    numpadEl.setAttribute('aria-hidden','true');
+    saveState();
+    showLeaderboard(true);
+    setMessage('Game ended. Final leaderboard shown.');
+  }
+
+  // numeric pad build
+  function buildNumpad(){
+    numpadEl.innerHTML = '';
+    const keys = ['1','2','3','4','5','6','7','8','9','Clear','0','Enter'];
+    keys.forEach(k=>{
+      const b = document.createElement('button');
+      b.className = 'pad';
+      b.type = 'button';
+      b.textContent = k;
+      b.setAttribute('aria-label', k === 'Clear' ? 'Clear' : k === 'Enter' ? 'Submit' : `Number ${k}`);
+      b.addEventListener('click', ()=> handlePad(k));
+      numpadEl.appendChild(b);
+    });
+  }
+
+  function handlePad(key){
+    if(key === 'Clear'){ guessInput.value=''; guessInput.focus(); return; }
+    if(key === 'Enter'){ handleGuess(); return; }
+    // append digit
+    guessInput.value = String((guessInput.value || '') + key);
+    guessInput.focus();
+  }
+
+  // UI events / wiring
+  startBtn.addEventListener('click', ()=>{ hintsMax = getMaxHintsForCurrent(); setDifficultyFromSelect(); startNewGame(); });
+  if(setupPlayersBtn) setupPlayersBtn.addEventListener('click', ()=> openPlayersModal(players));
+  if(choosePlayerBtn) choosePlayerBtn.addEventListener('click', ()=> choosePlayerForRound());
+
+  const addPointsBtn = $('#add-points');
+  if(addPointsBtn) addPointsBtn.addEventListener('click', ()=> adjustPlayerPoints());
+
+  guessBtn.addEventListener('click', handleGuess);
+  // disable manual typing - numpad only
+  guessInput.readOnly = true;
+  // prevent paste / drop into input
+  guessInput.addEventListener('paste', e=>e.preventDefault());
+  guessInput.addEventListener('drop', e=>e.preventDefault());
+
+  hintBtn.addEventListener('click', handleHint);
+  quitBtn.addEventListener('click', async ()=>{
+    if(!secretNumber) return;
+    if(prefs.confirmQuit){
+      const c = await showConfirm({title:'Quit round', desc:'Are you sure you want to quit this round?'});
+      if(!c) return;
+    }
+    history.push({ difficulty: difficultySelect.value, win: false, score: 0, hints: hintsUsed, attempts, player: currentPlayerIndex });
+    setMessage(`You quit. The number was ${secretNumber}`, '');
+    gameOver = true;
+    guessInput.disabled = true; guessBtn.disabled = true; hintBtn.disabled = true; quitBtn.disabled = true;
+    numpadEl.setAttribute('aria-hidden','true');
+    rotatePlayer();
+    saveState();
+    if(await showConfirm({title:'Quit',desc:'Return to menu or start a new round?'})){
+      startNewGame();
+    }
+  });
+
+  difficultySelect.addEventListener('change', ()=>{ setDifficultyFromSelect(); updateStatusUI(); });
+  modeSelect.addEventListener('change', ()=>{ setDifficultyFromSelect(); updateStatusUI(); });
+
+  // Settings UI wiring
+  if(openSettingsBtn) openSettingsBtn.addEventListener('click', ()=>{ renderLeaderboards(); showModal(settingsModalEl); });
+  if(settingCloseBtn) settingCloseBtn.addEventListener('click', ()=> hideModal(settingsModalEl));
+  if(prefDefaultDiff) prefDefaultDiff.addEventListener('change', ()=>{ prefs.defaultDiff = prefDefaultDiff.value; savePrefs(); applyPrefs(); });
+  // 'Close' button just closes the settings panel
+  if(settingSaveBtn) settingSaveBtn.addEventListener('click', ()=>{ hideModal(settingsModalEl); setMessage('Settings closed.'); });
+
+  // Wire missing quick-action buttons in the Settings modal
+  const settingShowProfile = $('#setting-show-profile');
+  const settingShowLeaderboard = $('#setting-show-leaderboard');
+  const settingSelectPlayer = $('#setting-select-player');
+  const settingRenamePlayer = $('#setting-rename-player');
+  const settingAddPlayer = $('#setting-add-player');
+  const settingRemovePlayer = $('#setting-remove-player');
+  const settingAdjustPoints = $('#setting-adjust-points');
+  const settingEndSession = $('#setting-end-session');
+  const settingEndGame = $('#setting-end-game');
+
+  if(settingShowProfile) settingShowProfile.addEventListener('click', ()=>{ hideModal(settingsModalEl); showProfile(); });
+  if(settingShowLeaderboard) settingShowLeaderboard.addEventListener('click', ()=>{ hideModal(settingsModalEl); showLeaderboard(false); });
+  if(settingSelectPlayer) settingSelectPlayer.addEventListener('click', async ()=>{ hideModal(settingsModalEl); await selectNextPlayer(); });
+  if(settingRenamePlayer) settingRenamePlayer.addEventListener('click', ()=>{ hideModal(settingsModalEl); renamePlayer(); });
+  if(settingAddPlayer) settingAddPlayer.addEventListener('click', ()=>{ hideModal(settingsModalEl); addPlayer(); });
+  if(settingRemovePlayer) settingRemovePlayer.addEventListener('click', async ()=>{ hideModal(settingsModalEl); await removePlayer(); });
+  if(settingAdjustPoints) settingAdjustPoints.addEventListener('click', async ()=>{ hideModal(settingsModalEl); await adjustPlayerPoints(); });
+  if(settingEndSession) settingEndSession.addEventListener('click', ()=>{ hideModal(settingsModalEl); endSession(); });
+  if(settingEndGame) settingEndGame.addEventListener('click', async ()=>{ hideModal(settingsModalEl); if(await showConfirm({title:'End game',desc:'Are you sure? This will clear session data.'})){ endGame(); } });
+
+  // profile panel removed; no profile-level show-leader button to wire
+
+  function performAutoAdjustmentPostRound(){
+    if(difficultySelect.value !== 'auto') return;
+    const newLevel = computeAutoLevel();
+    const newMax = getMaxNumberFromLevel(newLevel);
+    if(newMax !== maxNumber){
+      maxNumber = newMax;
+      setMessage(`Auto adjusted difficulty → range 1–${maxNumber}`, `Auto chose level ${newLevel} based on recent performance.`);
+      if(gameOver || secretNumber === null){ workingMin = 1; workingMax = maxNumber; }
+      hintsMax = getMaxHintsForCurrent();
+      updateStatusUI();
+      saveState();
+    } else {
+      saveState();
+    }
+  }
+  // expose getter for debugging; remove global direct logging (was logging too early)
+  // expose via window._numgame below
+  function updateStatusUI(){
+    setRangePill();
+    updateStatusPills();
+    renderHistory();
+    renderProfile();
+  }
+  function setRangePill(){
+    if(difficultySelect.value === 'auto'){
+      const lvl = computeAutoLevel();
+      rangePill.textContent = `Range: 1–${maxNumber} (Auto → ${lvl})`;
+    } else {
+      rangePill.textContent = `Range: 1–${maxNumber}`;
+    }
+    workingPill.textContent = `Working: ${workingMin}–${workingMax}`;
+  }
+
+  // init
+  (async function init(){
+    buildNumpad();
+    loadPrefs();
+    applyPrefs();
+    const loaded = loadState();
+    // debug: if state was loaded, log restored secret
+    try{ if(loaded) console.log('restored secretNumber:', secretNumber); }catch(e){}
+    renderPlayers();
+    renderLeaderboards();
+    renderHistory();
+    renderProfile();
+    setDifficultyFromSelect();
+    updateStatusUI();
+    if(!loaded){
+      await setupPlayers();
+    } else {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const cont = await showSessionPrompt();
+        if(!cont){
+          clearState();
+          await setupPlayers();
+        } else {
+          // Restore the full UI to match the 'Continue' experience
+          renderPlayers();
+          renderLeaderboards();
+          renderHistory();
+          renderProfile();
+          setDifficultyFromSelect();
+          updateStatusUI();
+        }
+      } else {
+        await setupPlayers();
+      }
+    }
+    // ensure input can't be manually typed; everything via numpad
+    guessInput.readOnly = true;
+  })();
+
+  // expose for debugging
+  window._numgame = { startNewGame, saveState, loadState, clearState, showBreakdown,
+    getSecret: () => secretNumber
+  };
+
+})();
+ function startGame(){
+  const overlay = document.getElementById('startOverlay');
+  const game = document.getElementById('gameWrapper');
+
+  overlay.classList.add('hide');
+
+  setTimeout(()=>{
+    overlay.style.display = 'none';
+    game.style.display = 'block';
+  }, 250);
+}
+ function goHome(){
+  window.location.href = "../index.html";
+}
+</script>
+</body>
+</html>
