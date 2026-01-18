@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hangman Game</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* Global Reset and Box Model */
+    *
+    {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    /* Body and Background Styling */
+    body {
+      background: radial-gradient(circle at top, #1e293b, #020617);
+      color: #f9fafb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* Main Game Container */
+    .game-container {
+      background: rgba(15, 23, 42, 0.97);
+      border-radius: 20px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+      max-width: 950px;
+      width: 100%;
+      padding: 22px 22px 26px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Game Header Layout */
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .game-title { display:flex; align-items:baseline; gap:8px; }
+    .game-header h1 { font-size: 1.8rem; letter-spacing: 0.06em; }
+
+    .right-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Attempts Display */
+    .attempts {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+      transition: color 0.4s ease;
+    }
+
+    /* Custom Select Styling */
+    .select {
+      background: rgba(15, 23, 42, 0.9);
+      color: #e5e7eb;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Main Content Layout */
+    .top-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    /* Hangman Figure Container */
+    .figure-wrapper { flex: 0 0 220px; display:flex; justify-content:center; align-items:center; }
+    .hangman-figure { position: relative; width:190px; height:230px; }
+
+    /* Gallows Structure */
+    .gallows { position:absolute; inset:0; }
+    .gallows-base { position:absolute; bottom:10px; left:18px; width:130px; height:8px; background:#4b5563; border-radius:999px; }
+    .gallows-pole { position:absolute; bottom:18px; left:48px; width:8px; height:165px; background:#4b5563; border-radius:999px; }
+    .gallows-beam { position:absolute; top:18px; left:48px; width:110px; height:8px; background:#4b5563; border-radius:999px; }
+    .gallows-rope { position:absolute; top:26px; left:138px; width:4px; height:30px; background:#6b7280; border-radius:999px; }
+
+    /* Hangman Body Parts */
+    .hangman-part { position:absolute; opacity:0; transition: opacity 0.25s ease-out, transform 0.25s ease-out; }
+    .hangman-part.visible { opacity:1; transform: translateY(0); }
+
+    .head { top:55px; left:120px; width:34px; height:34px; border-radius:50%; border:3px solid #f97373; transform:translateY(-4px); }
+    .body { top:89px; left:136px; width:2px; height:50px; background:#f97373; transform:translateY(-4px); }
+    .arm-left { top:100px; left:104px; width:34px; height:2px; background:#f97373; transform-origin:left center; transform: rotate(-30deg) translateY(-4px); }
+    .arm-right { top:100px; left:136px; width:34px; height:2px; background:#f97373; transform-origin:right center; transform: rotate(30deg) translateY(-4px); }
+    
+    .leg-left { top:138px; left:138px; width:30px; height:2px; background:#f97373; transform-origin:0 50%; transform: rotate(45deg) translateY(-4px); }
+    .leg-right { top:138px; left:106px; width:30px; height:2px; background:#f97373; transform-origin:100% 50%; transform: rotate(-45deg) translateY(-4px); }
+
+    .eye-left,.eye-right { width:4px; height:4px; border-radius:999px; background:#f97373; top:65px; }
+    .eye-left { left:128px; } .eye-right { left:138px; }
+
+    /* Status and Control Panel */
+    .status-panel { flex:1; display:flex; flex-direction:column; gap:12px; min-width:0; }
+
+    /* MODIFIED: Player Selection Row (Requirement 1) */
+    .player-selection-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px; /* Optional: small padding for aesthetics */
+      min-height: 32px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid rgba(75,85,99,0.35);
+    }
+    .current-player-info {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #a5b4fc;
+        text-shadow: 0 0 4px rgba(129,140,248,.6);
+    }
+    .current-player-select-btn {
+        padding: 4px 10px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        background: rgba(30,64,175,.4);
+        color: #dbeafe;
+        border: 1px solid rgba(129,140,248,.7);
+    }
+
+    /* Hidden Word Display */
+    .word-display {
+      display:flex; flex-wrap:wrap; gap:8px; font-size:1.7rem; letter-spacing:0.18em;
+      padding:10px 14px; border-radius:12px; background: rgba(15,23,42,0.88);
+      border:1px solid rgba(75,85,99,0.85); min-height:60px; text-transform: lowercase;
+    }
+
+    .word-display .letter:first-child.revealed {
+        font-size: 1.6rem; 
+        text-transform: capitalize;
+    }
+    
+    .letter { border-bottom:2px solid #6b7280; min-width:18px; text-align:center; padding-bottom:3px; }
+    .letter.space { min-width:30px !important; border-bottom:none !important; }
+    
+    .letter.revealed { color:#a5b4fc; } 
+    .letter.pop { animation: pop .18s ease-out; }
+    
+    /* Animation for revealing letters */
+    @keyframes pop { 
+        from { transform: scale(.6); opacity: .3 } 
+        to { transform: scale(1); opacity: 1 } 
+    }
+
+    /* Controls and Messaging */
+    .controls-row { 
+        display:flex; 
+        justify-content:space-between; 
+        align-items:flex-end; /* Align message text and buttons to the bottom */
+        gap:12px; 
+        flex-wrap:wrap; 
+    }
+    
+    /* MODIFIED: Action Buttons Group (Requirement 2) */
+    .action-buttons-group {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* Two options per row */
+        gap: 8px;
+        flex-grow: 1; /* Allow the button group to take available space */
+    }
+
+    /* Added style to ensure 'Play Again' button is a separate entity */
+    .buttons { 
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: flex-end; /* Keep the restart button on the bottom line */
+    }
+    
+    .message { font-size:0.95rem; min-height:24px; color:#e5e7eb; transition: color .15s, transform .15s; }
+    .message.success { color:#4ade80 } 
+    .message.error { color:#f97373 } 
+    .message.shake{ animation:shake .25s }
+    
+    @keyframes shake { 0%{transform:translateX(0)}25%{transform:translateX(-3px)}50%{transform:translateX(3px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)} }
+
+    /* Button Styling */
+    button{ border:none; cursor:pointer; border-radius:999px; padding:8px 14px; font-size:.9rem; font-weight:500; transition: transform .1s, box-shadow .1s, background .15s; }
+    .btn-primary{ background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; box-shadow:0 10px 18px rgba(79,70,229,.4) }
+    .btn-secondary{ background:rgba(30,64,175,.4); color:#e5e7eb; border:1px solid rgba(129,140,248,.7) }
+    button:disabled{ opacity:.4; cursor:not-allowed; box-shadow:none }
+
+    /* Keyboard Layout */
+    .keyboard{ margin-top:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(34px,1fr)); gap:6px; }
+    .key{ padding:7px 0; font-size:.85rem; background:rgba(15,23,42,.95); border-radius:10px; border:1px solid rgba(75,85,99,.95); color:#e5e7eb; }
+    .key-correct{ border-color:#22c55e; box-shadow:0 0 6px rgba(34,197,94,.4) } 
+    .key-wrong{ border-color:#ef4444; opacity:.7; }
+
+    /* Wrong Guesses Display - Removed margin-top:10px from CSS as it's now placed differently */
+    .wrong-letters{ font-size:.85rem; color:#9ca3af; min-height:20px } 
+    .wrong-letters strong{ color:#f97373 }
+
+    /* MODIFIED: Player Guessing Display (Requirement 3) */
+    .current-guesser {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #7c3aed; /* Purple color for emphasis */
+      min-height: 24px;
+    }
+
+    /* Player Information - Removed old styling as it's no longer used */
+    /* .player-row{ padding:2px 0 } 
+    .player-row.current-player{ font-weight:600; color:#e5e7eb; text-shadow:0 0 6px rgba(129,140,248,.9) } */ 
+
+    /* Round Result Card */
+    .result-card{ position:absolute; inset:auto 16px 16px 16px; background:rgba(15,23,42,.98); border-radius:16px; border:1px solid rgba(148,163,184,.4); padding:12px 14px; box-shadow:0 18px 40px rgba(0,0,0,.8); display:flex; flex-direction:column; gap:6px; animation:fadeUp .25s ease-out; }
+    .hidden{ display:none !important } 
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Modal Styling */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:999; }
+    .modal{ width:min(680px,95%); background:rgba(7,10,17,.97); border-radius:14px; padding:18px; border:1px solid rgba(148,163,184,.18); box-shadow:0 14px 40px rgba(0,0,0,.7); color:#e6eef8; }
+    .modal h3{ font-size:1.1rem; margin-bottom:8px; }
+    
+    /* Leaderboard Table */
+    .leaderboard-table{ width:100%; border-collapse:collapse; margin-top:8px; }
+    .leaderboard-table th,.leaderboard-table td{ padding:8px 10px; text-align:left; border-bottom:1px dashed rgba(148,163,184,0.06); font-size:0.95rem; color:#dbeafe; }
+    .modal-buttons{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+    
+    /* Settings Menu Options */
+    .settings-options button { border: 1px solid rgba(129,140,248,.35) !important; color:#dbeafe; }
+    .settings-options button#setting-end-game { border-color: #ef444480 !important; color:#f9fafb; }
+
+    /* Profile Card Specific Styles */
+    .profile-card { background:rgba(15,23,42,0.8); border-radius:10px; padding:12px; margin-bottom:10px; }
+    .profile-card h4 { font-size:1rem; margin-bottom:4px; color:#a5b4fc; }
+    .profile-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-top:8px; font-size:0.9rem; }
+    .profile-stats div { background:rgba(2,6,23,0.9); padding:6px 8px; border-radius:6px; }
+    .profile-stats strong { color:#4ade80; }
+    .playstyle-label { margin-top:6px; font-size:1.1rem; font-weight:600; color:#facc15; }
+
+    /* Responsive Adjustments */
+    @media (max-width:780px){
+      .top-row{ flex-direction:column; align-items:center } 
+      .figure-wrapper{ order:-1 } 
+      .game-container{ padding:18px 14px 22px } 
+      .result-card{ inset:auto 8px 8px 8px } 
+      .keyboard{ grid-template-columns:repeat(auto-fill,minmax(40px,1fr)); gap:8px }
+      /* Adjust action button layout for small screens */
+      .action-buttons-group {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container" id="game-container">
+    <div class="game-header">
+      <div class="game-title"><h1>Hangman</h1></div>
+
+      <div class="right-header">
+        <div class="attempts" id="attempts">Attempts left: 8</div>
+
+        <div style="display:flex; flex-direction:column;">
+          <div style="font-size:0.95rem; color:#e5e7eb; margin-left:6px;">Difficulty</div>
+          <select id="difficulty" class="select">
+            <option value="auto">Auto</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div style="display:flex; flex-direction:column;">
+          <div style="font-size:0.95rem; color:#e5e7eb; margin-left:6px;">Category</div>
+          <select id="category" class="select">
+            <option value="all">All</option>
+            <option value="animals">Animals</option>
+            <option value="fantasy">Fantasy</option>
+            <option value="feelings">Feelings</option>
+            <option value="life">Life</option>
+            <option value="nature">Nature</option>
+            <option value="objects">Objects</option>
+            <option value="places">Places</option>
+            <option value="tech">Tech</option>
+            <option value="weather">Weather</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <button id="settings-btn" class="btn-secondary">Settings</button>
+      </div>
+    </div>
+
+    <div class="top-row">
+      <div class="figure-wrapper">
+        <div class="hangman-figure">
+          <div class="gallows">
+            <div class="gallows-base"></div>
+            <div class="gallows-pole"></div>
+            <div class="gallows-beam"></div>
+            <div class="gallows-rope"></div>
+          </div>
+
+          <div class="hangman-part head" data-stage="0"></div>
+          <div class="hangman-part body" data-stage="1"></div>
+          <div class="hangman-part arm-left" data-stage="2"></div>
+          <div class="hangman-part arm-right" data-stage="3"></div>
+          <div class="hangman-part leg-left" data-stage="4"></div>
+          <div class="hangman-part leg-right" data-stage="5"></div>
+          <div class="hangman-part eye-left" data-stage="6"></div>
+          <div class="hangman-part eye-right" data-stage="7"></div>
+        </div>
+      </div>
+
+      <div class="status-panel">
+        
+        <div class="player-selection-row" id="player-selection-row">
+            <div class="current-player-info" id="current-player-info">1. Player 1 (0 pts)</div>
+            <button id="change-player-btn" class="btn-secondary current-player-select-btn">Select</button>
+        </div>
+
+        <div id="timer-display" style="margin-bottom: 8px;">
+            <div style="font-size: 0.9rem; color: #a5b4fc; margin-bottom: 4px;">Time Left: <span id="timer-text">15</span>s</div>
+            <div id="timer-bar" style="height: 6px; background: rgba(75, 85, 99, 0.5); border-radius: 999px; overflow: hidden;">
+                <div id="timer-progress" style="width: 100%; height: 100%; background: #4ade80; transition: width 1s linear;"></div>
+            </div>
+        </div>
+        <div id="word" class="word-display" aria-label="Hidden word" role="status"></div>
+
+        <div id="wrong-letters" class="wrong-letters" aria-live="polite" style="margin-top: 6px;">...</div>
+
+        <div class="controls-row">
+          <div id="message" class="message" aria-live="polite"></div>
+          
+          <div class="buttons">
+             <div class="action-buttons-group">
+                <button id="guess-word-btn" class="btn-secondary">Guess Word (-3 attempts)</button>
+                <button id="hint-btn" class="btn-secondary">Hint</button>
+                <button id="skip-word-btn" class="btn-secondary">Skip Word (-10 pts)</button> 
+                <button id="host-reveal-btn" class="btn-secondary">Reveal (-20 pts)</button>
+            </div>
+            <button id="restart-btn" class="btn-primary hidden">Play again</button>
+          </div>
+        </div>
+
+        <div id="keyboard" class="keyboard" role="group" aria-label="Letter guessing buttons"></div>
+        
+        <div id="current-guesser" class="current-guesser">Player 1 is guessing...</div>
+
+      </div>
+    </div>
+
+    <div id="result-card" class="result-card hidden" role="dialog" aria-modal="true">
+      <div id="result-title" class="result-title"></div>
+      <div id="result-details" class="result-details" style="color:#cfe5ff"></div>
+      <div class="result-buttons" style="display:flex; gap:8px; justify-content:flex-end;">
+        <button id="next-round-btn" class="btn-primary">Next round</button>
+      </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h3 id="confirm-title">Confirm</h3>
+        <div id="confirm-desc" style="margin-top:8px; color:#9fb0d8;"></div>
+        <div class="modal-buttons">
+          <button id="confirm-cancel" class="btn-secondary">Cancel</button>
+          <button id="confirm-ok" class="btn-primary">Yes</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="endgame-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="endgame-title">
+        <h3 id="endgame-title">Leaderboard</h3>
+        <table class="leaderboard-table" id="leaderboard-table" aria-describedby="leaderboard-desc">
+          <thead><tr><th>#</th><th>Player</th><th>Points</th></tr></thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+        <div style="margin-top:8px; color:#9fb0d8; font-size:0.9rem;" id="leaderboard-desc"></div>
+        <div class="modal-buttons">
+          <button id="leaderboard-close-btn" class="btn-primary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <h3 id="settings-title">Game Settings & Admin</h3>
+        <div style="margin-top:8px; color:#9fb0d8; font-size:0.9rem;">
+          Use these options to manage the game session.
+        </div>
+        <div class="settings-options" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-top:16px;">
+          <button id="setting-show-profile" class="btn-secondary">View My Profile</button>
+          <button id="setting-show-leaderboard" class="btn-secondary">View Leaderboard</button>
+          <button id="setting-select-player" class="btn-secondary">Change Current Player</button>
+          <button id="setting-rename-player" class="btn-secondary">Rename Player</button>
+          <button id="setting-add-player" class="btn-secondary">Add New Player</button>
+          <button id="setting-remove-player" class="btn-secondary">Remove Player</button>
+          <button id="setting-adjust-points" class="btn-secondary">Adjust Player Points (Admin)</button>
+          
+          <div style="grid-column: 1 / -1; height: 1px; background: rgba(148, 163, 184, 0.35); margin: 6px 0;"></div>
+
+          <button id="setting-end-session" class="btn-secondary">End Current Session</button>
+          <button id="setting-end-game" class="btn-secondary">End Game & Reset All Data</button>
+        </div>
+        <div class="modal-buttons">
+          <button id="settings-close" class="btn-primary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="profile-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+        <h3 id="profile-title">Player Profile</h3>
+        <div id="profile-content">
+          <div class="profile-card">
+            <h4 id="profile-name"></h4>
+            <div class="profile-stats">
+              <div>Points: <strong id="profile-points">0</strong></div>
+              <div>Win Rate: <strong id="profile-win-rate">0%</strong></div>
+              <div>Total Guesses: <strong id="profile-total-guesses">0</strong></div>
+              <div>Wrong Guesses: <strong id="profile-wrong-guesses">0</strong></div>
+              <div>Words Guessed: <strong id="profile-words-guessed">0</strong></div>
+              <div>Hints Used: <strong id="profile-hints-used">0</strong></div>
+            </div>
+            <div class="playstyle-label" id="profile-playstyle"></div>
+          </div>
+        </div>
+        <div class="modal-buttons">
+          <button id="profile-close" class="btn-primary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="player-select-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="player-select-title">
+        <h3 id="player-select-title">Select a Player</h3>
+        <div id="player-select-list" style="max-height: 400px; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px;">
+          <p style="color:#9fb0d8; margin-top:8px;">No players available.</p>
+        </div>
+        <div class="modal-buttons">
+          <button id="player-select-close" class="btn-primary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="input-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="input-title">
+        <h3 id="input-title">Input Required</h3>
+        <div id="input-desc" style="margin-top:8px; color:#9fb0d8;">Please enter your guess.</div>
+        <input type="text" id="player-input" placeholder="Type here..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #4b5563; background:#020617; color:#e5e7eb; margin-top:12px;" />
+        <div class="modal-buttons">
+          <button id="input-cancel" class="btn-secondary">Cancel</button>
+          <button id="input-ok" class="btn-primary">OK</button>
+        </div>
+      </div>
+    </div>
+
+
+  <script>
+  (function(){
+    'use strict';
+    // --- UTILITIES ---
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const escapeHtml = s => 
+        String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+    
+    // --- CONFIGURATION CONSTANTS ---
+    const STORAGE_KEY = 'hangmanMultiSessionV4';
+    const ENDGAME_KEY = 'hangmanEndedCompletelyV4';
+    const RECENT_WORD_LIMIT = 12; // Maximum number of words to remember to avoid immediate repeats
+    const HOST_PASSWORD = '79';
+    const HOST_REVEAL_PENALTY = 20;
+    const GUESS_WORD_PENALTY_ATTEMPTS = 3;
+    const GUESS_WORD_BONUS_POINTS = 20;
+    const SKIP_WORD_PENALTY_POINTS = 10;
+    
+    // NEW CONSTANT FOR TIMER DURATION
+    const ROUND_TIME_LIMIT = 15; // Time in seconds
+
+    // --- WORD DATASET (UPDATED) ---
+    const WORD_DATA = [
+      { word: "technology", category: "tech" },
+      { word: "information", category: "tech" },
+      { word: "communication", category: "tech" },
+      { word: "transportation", category: "tech" },
+      { word: "transporting", category: "tech" },
+      { word: "electricity", category: "tech" },
+      { word: "calculation", category: "tech" },
+      { word: "format", category: "tech" },
+      { word: "telegraph", category: "tech" },
+      { word: "playstation", category: "tech" },
+      { word: "network", category: "tech" },
+      { word: "software", category: "tech" },
+      { word: "hardware", category: "tech" },
+      { word: "algorithm", category: "tech" },
+      { word: "computer", category: "tech" },
+      { word: "internet", category: "tech" },
+
+      { word: "thunderstorm", category: "weather" },
+      { word: "snowfalling", category: "weather" },
+      { word: "rainbow", category: "weather" },
+      { word: "hurricane", category: "weather" },
+      { word: "snowy", category: "weather" },
+      { word: "sunshine", category: "weather" },
+      { word: "lightning", category: "weather" },
+      { word: "tornado", category: "weather" },
+      { word: "dew", category: "weather" },
+
+      { word: "watermelon", category: "nature" },
+      { word: "environmental", category: "nature" },
+      { word: "waterfall", category: "nature" },
+      { word: "rainforest", category: "nature" },
+      { word: "mountainside", category: "nature" },
+      { word: "sunflower", category: "nature" },
+      { word: "moonlight", category: "nature" },
+      { word: "starlight", category: "nature" },
+      { word: "forest", category: "nature" },
+      { word: "shadow", category: "nature" },
+      { word: "shallow", category: "nature" },
+      { word: "shore", category: "nature" },
+      { word: "valley", category: "nature" },
+      { word: "glacier", category: "nature" },
+      { word: "river", category: "nature" },
+      { word: "ocean", category: "nature" },
+      { word: "mountain", category: "nature" },
+      { word: "desert", category: "nature" },
+      { word: "volcano", category: "nature" },
+      { word: "breeze", category: "nature" },
+      { word: "jungle", category: "nature" },
+
+      { word: "grasshopper", category: "animals" },
+      { word: "cattle", category: "animals" },
+      { word: "kitten", category: "animals" },
+      { word: "penguin", category: "animals" },
+      { word: "dolphin", category: "animals" },
+      { word: "butterflies", category: "animals" },
+      { word: "tiger", category: "animals" },
+      { word: "rabbit", category: "animals" },
+      { word: "eagle", category: "animals" },
+      { word: "panda", category: "animals" },
+      { word: "turtle", category: "animals" },
+      { word: "shark", category: "animals" },
+      { word: "monkey", category: "animals" },
+      { word: "giraffe", category: "animals" },
+      { word: "elephant", category: "animals" },
+      { word: "crocodile", category: "animals" },
+      { word: "hippopotamus", category: "animals" },
+      { word: "rhinoceros", category: "animals" },
+      { word: "chimpanzee", category: "animals" },
+      { word: "koala", category: "animals" },
+      { word: "squirrel", category: "animals" },
+      { word: "pig", category: "animals" }, /* REPLACED guinea pig */
+      { word: "parrot", category: "animals" },
+      { word: "flamingo", category: "animals" },
+      { word: "ostrich", category: "animals" },
+      { word: "pelican", category: "animals" },
+      { word: "sparrow", category: "animals" },
+      { word: "seahorse", category: "animals" },
+      { word: "starfish", category: "animals" },
+
+      { word: "playground", category: "places" },
+      { word: "playhouse", category: "places" },
+      { word: "castle", category: "places" },
+      { word: "international", category: "places" },
+      { word: "continent", category: "places" },
+      { word: "country", category: "places" },
+      { word: "city", category: "places" },
+      { word: "apartment", category: "places" },
+      { word: "castle", category: "places" },
+
+      { word: "photograph", category: "objects" },
+      { word: "paragraph", category: "objects" },
+      { word: "rattle", category: "objects" },
+      { word: "finger", category: "objects" },
+      { word: "shampoo", category: "objects" },
+      { word: "placer", category: "objects" },
+      { word: "planer", category: "objects" },
+      { word: "letter", category: "objects" },
+      { word: "butter", category: "objects" },
+      { word: "mitten", category: "objects" },
+      { word: "keyboard", category: "objects" },
+      { word: "monitor", category: "objects" },
+      { word: "seashell", category: "objects" },
+      { word: "camera", category: "objects" },
+      { word: "bicycle", category: "objects" },
+      { word: "backpack", category: "objects" },
+      { word: "umbrella", category: "objects" },
+      { word: "lantern", category: "objects" },
+      { word: "telescope", category: "objects" },
+      { word: "magnet", category: "objects" },
+      { word: "diamond", category: "objects" },
+      { word: "gold", category: "objects" },
+      { word: "silver", category: "objects" },
+      { word: "bronze", category: "objects" },
+      { word: "crystal", category: "objects" },
+      { word: "stone", category: "objects" },
+      { word: "marble", category: "objects" },
+      { word: "rubber", category: "objects" },
+      { word: "plastic", category: "objects" },
+      { word: "metal", category: "objects" },
+      { word: "glass", category: "objects" },
+      { word: "paper", category: "objects" },
+      
+      { word: "friendship", category: "feelings" },
+      { word: "confidence", category: "feelings" },
+      { word: "happiness", category: "feelings" },
+      { word: "loneliness", category: "feelings" },
+      { word: "motivation", category: "feelings" },
+      { word: "understanding", category: "feelings" },
+      { word: "forget", category: "feelings" },
+      { word: "danger", category: "feelings" },
+      { word: "hunger", category: "feelings" },
+      { word: "satisfaction", category: "feelings" },
+      { word: "disappointment", category: "feelings" },
+      { word: "confusion", category: "feelings" },
+      { word: "anxiety", category: "feelings" },
+      { word: "freedom", category: "feelings" },
+      { word: "drama", category: "feelings" },
+      
+      { word: "wizard", category: "fantasy" },
+      { word: "warrior", category: "fantasy" },
+      { word: "wanderer", category: "fantasy" },
+      { word: "adventurer", category: "fantasy" },
+      { word: "wonderland", category: "fantasy" },
+      { word: "dragonstone", category: "fantasy" },
+      { word: "storytelling", category: "fantasy" },
+      { word: "magicworld", category: "fantasy" },
+      { word: "heroicness", category: "fantasy" },
+      { word: "mystery", category: "fantasy" },
+      { word: "dragon", category: "fantasy" },
+      { word: "mermaid", category: "fantasy" },
+      { word: "unicorn", category: "fantasy" },
+      { word: "spaceship", category: "fantasy" },
+      { word: "legend", category: "fantasy" },
+      
+      { word: "planet", category: "other" },
+
+      { word: "adventure", category: "life" },
+      { word: "adventurous", category: "life" },
+      { word: "celebration", category: "life" },
+      { word: "entertainment", category: "life" },
+      { word: "basketball", category: "life" },
+      { word: "responsibility", category: "life" },
+      { word: "snowboarding", category: "life" },
+      { word: "playmaker", category: "life" },
+      { word: "battle", category: "life" },
+      { word: "little", category: "life" },
+      { word: "longer", category: "life" },
+      { word: "player", category: "life" },
+      { word: "better", category: "life" },
+      { word: "bitten", category: "life" },
+    ];
+
+    // --- CORE GAME CLASS ---
+    class HangmanGame {
+  // ---- STATE FIELDS ----
+  players = [];
+  currentPlayerIndex = 0;
+  gamesPlayed = 0;
+  gamesWon = 0;
+  currentStreak = 0;
+  bestStreak = 0;
+  recentWords = [];
+
+  currentWord = '';
+  displayWord = [];
+  attemptsLeft = 8;
+  maxAttemptsThisRound = 8;
+  wrongLetters = [];
+  hintsUsedThisRound = 0;
+  hostRevealUsedThisRound = false;
+  gameOver = false;
+
+  timerInterval = null;
+  dom = {
+        attemptsEl: $('#attempts'),
+        wordEl: $('#word'),
+        messageEl: $('#message'),
+        keyboardEl: $('#keyboard'),
+                // NEW DOM elements for timer
+        timerTextEl: $('#timer-text'),
+        timerProgressEl: $('#timer-progress'),
+
+        // Controls
+        guessWordBtn: $('#guess-word-btn'),
+        hintBtn: $('#hint-btn'),
+        skipWordBtn: $('#skip-word-btn'),
+        hostRevealBtn: $('#host-reveal-btn'),
+        restartBtn: $('#restart-btn'),
+        
+        // Settings
+        difficultySelect: $('#difficulty'),
+        categorySelect: $('#category'),
+        settingsBtn: $('#settings-btn'),
+        
+        // Display
+        wrongLettersEl: $('#wrong-letters'),
+        // NEW DOM elements for requirements
+        currentPlayerInfoEl: $('#current-player-info'), // The display for player name/points
+        changePlayerBtn: $('#change-player-btn'),       // The 'Select' button
+        currentGuesserEl: $('#current-guesser'),        // The name under the keyboard
+        
+        // Modals
+        resultCard: $('#result-card'),
+        resultTitle: $('#result-title'),
+        resultDetails: $('#result-details'),
+        nextRoundBtn: $('#next-round-btn'),
+
+        parts: $$('.hangman-part'), // The body parts
+      };
+
+  // ---- METHODS ----
+  hasRevealedLetters() {
+    return this.displayWord.some(ch => ch !== '_' && ch !== ' ');
+  }
+
+  async renamePlayer() {
+    if (this.players.length === 0) return;
+    this.stopTimer();
+
+    await this.selectPlayerAction('rename', async (idx) => {
+      const player = this.players[idx];
+
+      while (true) {
+        const newName = await this.showInput({
+          title: 'Rename Player',
+          desc: `Current name: <strong>${escapeHtml(player.name)}</strong><br>Enter a new name (must be unique).`,
+          placeholder: player.name,
+          defaultValue: player.name,
+          okText: 'Rename'
+        });
+
+        if (newName === null) {
+          if (!this.gameOver) this.startTimer();
+          return;
+        }
+
+        const clean = String(newName).trim();
+
+        if (!clean) {
+          await this.showInput({
+            title: 'Invalid Name',
+            desc: 'Name cannot be empty.',
+            hideInputField: true
+          });
+          continue;
+        }
+
+        if (
+          this.players.some(
+            (p, i) => i !== idx && p.name.toLowerCase() === clean.toLowerCase()
+          )
+        ) {
+          await this.showInput({
+            title: 'Name Not Unique',
+            desc: 'Another player already has this name.',
+            hideInputField: true
+          });
+          continue;
+        }
+
+        player.name = clean;
+        this.renderPlayers();
+        this.setMessage(`Player renamed to "${clean}".`, 'success');
+        this.saveSession();
+
+        if (!this.gameOver) this.startTimer();
+        break;
+      }
+    });
+  }
+      // --- INITIALIZATION & SETUP ---
+      constructor(){
+        this.bindEvents();
+        this.loadInitialSettings();
+        this.loadSessionAndStart();
+      }
+
+      bindEvents(){
+        this.dom.guessWordBtn.addEventListener('click', () => this.guessWord());
+        this.dom.hintBtn.addEventListener('click', () => this.useHint());
+        this.dom.skipWordBtn.addEventListener('click', () => this.skipWord());
+        this.dom.hostRevealBtn.addEventListener('click', () => this.hostReveal());
+        this.dom.restartBtn.addEventListener('click', () => this.startGame());
+        this.dom.nextRoundBtn.addEventListener('click', () => this.startNextRound());
+        
+        // New event for the 'Select' button
+        this.dom.changePlayerBtn.addEventListener('click', () => this.selectNextPlayer()); 
+
+        this.dom.difficultySelect.addEventListener('change', () => this.startGame());
+        this.dom.categorySelect.addEventListener('change', () => this.startGame());
+        this.dom.settingsBtn.addEventListener('click', () => this.showSettings());
+        
+        // Keyboard input handling
+        document.addEventListener('keydown', (e)=>{ 
+            if(this.gameOver || document.querySelector('.modal-backdrop:not(.hidden)')) return; 
+            const k = (e.key||'').toLowerCase();
+            // Check if key is a single letter A-Z
+            if(k.length===1 && k>='a' && k<='z'){
+                const btn = this.dom.keyboardEl.querySelector(`button[data-letter="${k}"]`);
+                if(btn && !btn.disabled) btn.click();
+            }
+        });
+      }
+
+      // --- SESSION AND STORAGE MANAGEMENT (Logic remains the same) ---
+      saveInitialSettings() {
+        try {
+          localStorage.setItem('hangmanDifficulty', this.dom.difficultySelect.value);
+          localStorage.setItem('hangmanCategory', this.dom.categorySelect.value);
+        } catch(e) { console.warn('Game setting save failed (localStorage issue)', e); }
+      }
+
+      loadInitialSettings() {
+        try {
+          this.dom.difficultySelect.value = localStorage.getItem('hangmanDifficulty') || 'auto';
+          this.dom.categorySelect.value = localStorage.getItem('hangmanCategory') || 'all';
+        } catch(e) { console.warn('Game setting load failed (localStorage issue)', e); }
+      }
+
+      saveSession(){
+        try{
+          const state={
+            players: this.players,
+            gamesPlayed: this.gamesPlayed,
+            gamesWon: this.gamesWon,
+            currentStreak: this.currentStreak,
+            bestStreak: this.bestStreak,
+            recentWords: this.recentWords.slice(-RECENT_WORD_LIMIT),
+            savedAt: Date.now()
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          localStorage.removeItem(ENDGAME_KEY); // Clear the 'game ended' flag
+        }catch(e){console.warn('save failed',e);}
+      }
+
+      clearSession(){
+        try{
+          localStorage.removeItem(STORAGE_KEY);
+          this.players = [];
+          this.gamesPlayed = 0;
+          this.gamesWon = 0;
+          this.currentStreak = 0;
+          this.bestStreak = 0;
+          this.recentWords = [];
+          this.currentPlayerIndex = 0;
+          this.renderPlayers();
+        }catch(e){console.warn('clear failed',e);}
+      }
+
+      async loadSessionAndStart(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const ended = localStorage.getItem(ENDGAME_KEY);
+          const hasSaved = !!raw && raw.trim() !== '';
+
+          if(hasSaved && !ended){
+            const s = JSON.parse(raw);
+            if(s && Array.isArray(s.players) && s.players.length > 0){
+              this.players = s.players.map(p=>({
+                ...p,
+                name: String(p.name||'Player'), 
+                points: Number(p.points||0),
+                totalGuesses: Number(p.totalGuesses||0),
+                wrongGuesses: Number(p.wrongGuesses||0),
+                successfulWordGuesses: Number(p.successfulWordGuesses||0),
+                totalWordGuesses: Number(p.totalWordGuesses||0),
+                totalHintsUsed: Number(p.totalHintsUsed||0),
+              }));
+              this.gamesPlayed = Number(s.gamesPlayed||0);
+              this.gamesWon = Number(s.gamesWon||0);
+              this.currentStreak = Number(s.currentStreak||0);
+              this.bestStreak = Number(s.bestStreak||0);
+              this.recentWords = Array.isArray(s.recentWords) ? s.recentWords : [];
+
+              const cont = await this.showConfirm({
+                title: 'Resume Session?',
+                desc: `A previous session was found (${s.players.length} players). Do you want to continue?`,
+                okText: 'Resume',
+                cancelText: 'New Game'
+              });
+
+              if(!cont){
+                this.clearSession();
+                await this.setupPlayers();
+              } else {
+                this.renderPlayers();
+              }
+            } else {
+              // Saved data is corrupted or empty, start fresh.
+              await this.setupPlayers();
+            }
+          } else {
+            // No saved session or game was ended
+            if(ended) localStorage.removeItem(ENDGAME_KEY);
+            await this.setupPlayers();
+          }
+        } catch(e){
+          console.error('Session load failed:', e);
+          this.clearSession();
+          await this.setupPlayers();
+        }
+        
+        await this.selectNextPlayer(true); // Initial player selection
+        this.startGame();
+      }
+      
+      // --- TIMER LOGIC (NEW METHODS) ---
+      
+      // Starts a new timer, clearing any existing one
+      startTimer() {
+        this.stopTimer(); // Clear any existing timer
+        
+        let timeLeft = ROUND_TIME_LIMIT;
+        this.updateTimerDisplay(timeLeft);
+        
+        this.timerInterval = setInterval(() => {
+          timeLeft--;
+          this.updateTimerDisplay(timeLeft);
+          
+          if (timeLeft <= 0) {
+            this.stopTimer();
+            this.handleTimeOut();
+          }
+        }, 1000);
+    }
+    
+      // Clears the timer interval
+      stopTimer() {
+        if (this.timerInterval !== null) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
+        }
+      }
+      
+      // Updates the UI for the timer text and progress bar
+      updateTimerDisplay(timeLeft) {
+        this.dom.timerTextEl.textContent = timeLeft;
+        const progress = (timeLeft / ROUND_TIME_LIMIT) * 100;
+        this.dom.timerProgressEl.style.width = `${progress}%`;
+        
+        // Change color based on time left
+        if (timeLeft <= 5) {
+          this.dom.timerProgressEl.style.backgroundColor = '#ef4444'; // Red
+        } else if (timeLeft <= 10) {
+          this.dom.timerProgressEl.style.backgroundColor = '#facc15'; // Yellow
+        } else {
+          this.dom.timerProgressEl.style.backgroundColor = '#4ade80'; // Green
+        }
+      }
+      
+      // Action when the timer runs out
+      handleTimeOut() {
+        if (this.gameOver) return;
+        
+        this.gameOver = true;
+        this.enableKeyboard(false);
+        this.updateControlState();
+        
+        // Finalize stats as a loss/skip
+        const {delta,total} = this.finalizeStats(false, 'timeout');
+        
+        this.setMessage('Time out! The round ends.', 'error'); 
+        const titleCaseWord = this.currentWord.charAt(0).toUpperCase() + this.currentWord.slice(1).toLowerCase();
+        
+        // Manually show result card for time out
+        this.dom.resultCard.classList.remove('hidden');
+        this.dom.resultTitle.textContent = 'Time Out! ⏰';
+        const deltaText = delta>0? `+${delta}` : delta<0? `${delta}` : '0';
+        this.dom.resultDetails.innerHTML = `${this.players[this.currentPlayerIndex].name} ran out of time. The word was: "${escapeHtml(titleCaseWord)}". Points change: ${deltaText}. Total: ${total || 0}.`;
+      }
+
+      // --- GAMEPLAY MECHANICS ---
+
+      // Cycle to the next player in the list
+      advancePlayer() {
+        if (this.players.length > 1) {
+          this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+        }
+      }
+
+      // Selects a word based on current difficulty, category, and recent word history (Logic remains the same)
+      chooseWord(){
+        const difficulty = this.dom.difficultySelect.value;
+        const category = this.dom.categorySelect.value;
+        let pool = WORD_DATA.slice(); 
+
+        if(category!=='all') pool = pool.filter(w => w.category === category);
+
+        if(difficulty==='easy') pool = pool.filter(w=>w.word.replace(/\s/g, '').length<=5);
+        else if(difficulty==='medium') pool = pool.filter(w=>w.word.replace(/\s/g, '').length>=6 && w.word.replace(/\s/g, '').length<=8);
+        else if(difficulty==='hard') pool = pool.filter(w=>w.word.replace(/\s/g, '').length>=9);
+        
+        if(!pool.length){
+          pool = WORD_DATA.slice(); 
+        }
+
+        const availablePool = pool.filter(w=>!this.recentWords.includes(w.word));
+        let selectedWordObj = null;
+
+        if(availablePool.length > 0){
+          selectedWordObj = availablePool[Math.floor(Math.random()*availablePool.length)];
+        } else {
+          selectedWordObj = pool[Math.floor(Math.random()*pool.length)];
+        }
+        
+        if(!selectedWordObj) return 'default';
+
+        this.recentWords.push(selectedWordObj.word);
+        this.recentWords = this.recentWords.slice(-RECENT_WORD_LIMIT);
+
+        return selectedWordObj.word.toLowerCase();
+      }
+
+      // Determines max attempts based on difficulty (Logic remains the same)
+      getMaxAttempts(){
+        const d = this.dom.difficultySelect.value;
+        if(d==='easy') return 8;
+        if(d==='medium') return 9;
+        if(d==='hard') return 10;
+        return 8;
+      }
+
+      // Determines the cost for a hint (Logic remains the same)
+      getHintCost(){
+        const d = this.dom.difficultySelect.value;
+        if(d==='easy' || d==='auto') return {attempts:2,points:5};
+        if(d==='medium') return {attempts:3,points:10};
+        if(d==='hard') return {attempts:4,points:15};
+        return {attempts:2,points:5};
+      }
+
+      // Updates the hint button label (Logic remains the same)
+      updateHintLabel(){
+        const c = this.getHintCost();
+        this.dom.hintBtn.textContent = `Hint (-${c.attempts} tries, -${c.points} pts)`;
+      }
+
+      // Updates the attempts left display (Logic remains the same)
+      setAttempts(){
+        this.dom.attemptsEl.textContent = `Attempts left: ${this.attemptsLeft}`;
+        if(this.attemptsLeft <= 2){
+          this.dom.attemptsEl.style.color = '#f97373'; // Red
+        } else if(this.attemptsLeft <= 4){
+          this.dom.attemptsEl.style.color = '#facc15'; // Yellow
+        } else {
+          this.dom.attemptsEl.style.color = '#e5e7eb'; // Default
+        }
+        this.updateControlState();
+      }
+
+      // Sets a message in the message bar (Logic remains the same)
+      setMessage(text, type=''){
+        this.dom.messageEl.textContent = text;
+        this.dom.messageEl.className = `message ${type}`;
+        if(type==='error') this.dom.messageEl.classList.add('shake');
+      }
+
+      // Starts a brand new game
+      startGame(){
+        this.currentWord = this.chooseWord();
+        this.displayWord = Array.from({length:this.currentWord.length}).map((_,i)=>{
+          return this.currentWord[i] === ' ' ? ' ' : '_';
+        });
+        
+        this.maxAttemptsThisRound = this.getMaxAttempts();
+        this.attemptsLeft = this.maxAttemptsThisRound;
+        this.wrongLetters = [];
+        this.hintsUsedThisRound = 0;
+        this.hostRevealUsedThisRound = false;
+        this.gameOver = false;
+
+        this.setAttempts();
+        this.setMessage('');
+        this.dom.restartBtn.classList.add('hidden');
+        this.dom.resultCard.classList.add('hidden');
+        this.updateWrongUI();
+        this.updateHintLabel();
+        this.updateControlState();
+        this.renderWord();
+        this.resetFigure();
+        this.buildKeyboard();
+        this.enableKeyboard(true);
+        this.renderPlayers(); // Update the new player info row
+        
+        // NEW: Start the timer for the new round
+        this.startTimer();
+        
+        this.saveSession();
+      }
+      
+      // Starts the next round for the current player or advances to the next player
+      startNextRound(){
+        this.dom.resultCard.classList.add('hidden');
+        // Ensure timer is stopped before advancing player and starting a new round
+        this.stopTimer(); 
+        this.advancePlayer(); 
+        this.startGame();
+      }
+
+      // Renders the hidden word to the UI (Logic remains the same)
+      renderWord(animatedLetters = []){
+        this.dom.wordEl.innerHTML = this.displayWord.map((l, i)=>{
+          const classes = [];
+          if(l !== '_'){
+            classes.push('revealed');
+            if(animatedLetters.includes(i)) classes.push('pop');
+          }
+          if(l === ' ') classes.push('space');
+
+          const text = i === 0 && l !== ' ' ? escapeHtml(l.toUpperCase()) : escapeHtml(l.toLowerCase());
+
+          return `<span class="letter ${classes.join(' ')}">${l === ' ' ? '&nbsp;' : text}</span>`;
+        }).join('');
+      }
+
+      // MODIFIED: Renders the current player's info in the new row and below the keyboard
+      renderPlayers(){
+        if(this.players.length === 0) {
+            this.dom.currentPlayerInfoEl.textContent = 'No Players';
+            this.dom.currentGuesserEl.textContent = 'Setup players to begin.';
+            this.dom.changePlayerBtn.disabled = true;
+            return;
+        }
+        
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        // REFINEMENT: Changed # to . for player number
+        const infoText = `${this.currentPlayerIndex + 1}. ${escapeHtml(currentPlayer.name)} (${currentPlayer.points} pts)`;
+        
+        this.dom.currentPlayerInfoEl.textContent = infoText;
+        this.dom.currentGuesserEl.textContent = `${escapeHtml(currentPlayer.name)} is guessing...`;
+        this.dom.changePlayerBtn.disabled = false;
+        this.dom.changePlayerBtn.textContent = 'Select';
+      }
+
+      // Reveals a single letter in the word (Logic remains the same)
+      revealLetter(letter){
+        const animatedIndices = [];
+        for(let i=0; i<this.currentWord.length; i++){
+          if(this.currentWord[i]===letter && this.displayWord[i]==='_'){
+            this.displayWord[i] = letter;
+            animatedIndices.push(i);
+          }
+        }
+        return animatedIndices;
+      }
+
+      // Handles a player's letter guess
+      handleGuess(letter, btn){
+        letter = letter.toLowerCase();
+        this.players[this.currentPlayerIndex].totalGuesses++;
+        
+        if(this.currentWord.includes(letter)){
+          const animated = this.revealLetter(letter);
+          this.renderWord(animated);
+          this.updateControlState();
+          btn.classList.add('key-correct');
+          this.setMessage(`'${letter.toUpperCase()}' is correct!`, 'success');
+        } else {
+          this.attemptsLeft--;
+          this.players[this.currentPlayerIndex].wrongGuesses++;
+          this.wrongLetters.push(letter);
+          this.updateWrongUI();
+          this.updateFigure();
+          btn.classList.add('key-wrong');
+          this.setMessage(`'${letter.toUpperCase()}' is wrong.`, 'error');
+        }
+        
+        this.setAttempts();
+        this.updateControlState();
+        this.checkEnd('letter-guess');
+        
+        // NEW: Reset the timer after a successful or unsuccessful guess
+        if (!this.gameOver) {
+            this.startTimer(); 
+        }
+        
+        this.saveSession();
+      }
+
+      // --- ADVANCED GAMEPLAY ACTIONS (Logic remains the same) ---
+      useHint() {
+  if (this.gameOver) return;
+
+  const cost = this.getHintCost();
+
+  if (this.attemptsLeft <= cost.attempts) {
+    this.setMessage('Not enough attempts to use a hint.', 'error');
+    this.updateControlState();
+    return;
+  }
+
+  if (
+    this.dom.difficultySelect.value === 'hard' &&
+    this.hintsUsedThisRound >= 2
+  ) {
+    this.setMessage('No more hints allowed on Hard difficulty.', 'error');
+    this.updateControlState();
+    return;
+  }
+  const hidden = this.displayWord
+  .map((l, i) => (l === '_' ? i : -1))
+  .filter(i => i !== -1);
+
+if (hidden.length === 0) {
+  this.setMessage('No letters left to reveal.', 'error');
+  return;
+}
+        
+        if(this.dom.difficultySelect.value === 'hard' && !this.hintsUsedThisRound){
+          this.showConfirm({
+            title: 'Use Hint?',
+            desc: `This will cost **${cost.attempts} attempts** and **${cost.points} points** for ${this.players[this.currentPlayerIndex].name}. Continue?`,
+            okText: 'Yes, Use Hint',
+            cancelText: 'Cancel'
+          }).then(ok => {
+            if(ok) {
+                this.processHint(hidden, cost);
+            } else {
+                this.startTimer(); // Restart timer if cancelled
+            }
+          });
+        } else {
+          this.processHint(hidden, cost);
+        }
+      }
+
+      processHint(hidden, cost){
+        const pick = hidden[Math.floor(Math.random()*hidden.length)];
+        const letter = this.currentWord[pick];
+        const animated = this.revealLetter(letter);
+
+        this.attemptsLeft -= cost.attempts;
+        this.hintsUsedThisRound++;
+        this.setAttempts();
+        this.updateControlState();
+        this.renderWord(animated);
+        this.updateFigure();
+        this.setMessage(`Hint used — revealed '${letter}'.`, 'success');
+
+        if(this.players.length){
+          this.players[this.currentPlayerIndex].points = Math.max(0, (Number(this.players[this.currentPlayerIndex].points)||0) - cost.points);
+          this.players[this.currentPlayerIndex].totalHintsUsed++;
+          this.renderPlayers();
+        }
+
+        this.dom.keyboardEl.querySelectorAll('button').forEach(b=>{
+          if(b.dataset.letter === letter){
+            b.disabled = true;
+            b.tabIndex = -1;
+            b.classList.add('key-correct');
+          }
+        });
+        
+        this.checkEnd('hint');
+        
+        // NEW: Reset the timer after using a hint
+        if (!this.gameOver) {
+            this.startTimer(); 
+        }
+
+        this.saveSession();
+      }
+
+      updateHintState() {
+        const cost = this.getHintCost();
+        // Rule 1: Prevent self-destruct hints (cost-based)
+        if (this.attemptsLeft <= cost.attempts) {
+          this.dom.hintBtn.disabled = true;
+          this.dom.hintBtn.title = 'Not enough attempts to afford a hint.';
+          return;
+        }
+
+        // Rule 2: hard difficulty cap
+        if (
+          this.dom.difficultySelect.value === 'hard' &&
+          this.hintsUsedThisRound >= 2
+        ) {
+        this.dom.hintBtn.disabled = true;
+        this.dom.hintBtn.title = 'Max hints reached for Hard difficulty.';
+          return;
+        }
+
+      this.dom.hintBtn.disabled = false;
+      this.dom.hintBtn.title = '';
+    }
+      
+      updateControlState() {
+        const active = !this.gameOver;
+
+        // Guess Word: disabled once ANY letter is revealed
+        const blockGuessWord = this.hasRevealedLetters();
+
+        this.dom.guessWordBtn.disabled = !active || blockGuessWord;
+        this.dom.guessWordBtn.title = blockGuessWord
+        ? 'Guess Word is only allowed before any letters are revealed.'
+        : '';
+
+        this.dom.skipWordBtn.disabled = !active;
+        this.dom.hostRevealBtn.disabled = !active;
+
+        this.updateHintState();
+      }
+
+      async guessWord(){
+        if(this.gameOver || this.dom.guessWordBtn.disabled) return;
+        this.stopTimer(); // Temporarily stop timer during modal input
+        
+        const input = await this.showInput({
+          title: 'Guess the entire word!',
+          desc: `If correct, you win! If wrong, you lose **${GUESS_WORD_PENALTY_ATTEMPTS} attempts** and the round ends.`,
+          placeholder: 'Type your guess here',
+          okText: 'Guess'
+        });
+
+        if(input === null) {
+            this.startTimer(); // Restart timer if guess is cancelled
+            return;
+        } 
+        const guess = String(input).trim().toLowerCase();
+        if(!guess) {
+            this.setMessage('Guess cancelled or empty.', 'error');
+            this.startTimer(); // Restart timer if input was empty
+            return;
+        }
+        
+        this.players[this.currentPlayerIndex].totalWordGuesses++;
+
+        if(guess === this.currentWord){
+          this.players[this.currentPlayerIndex].successfulWordGuesses++;
+          this.displayWord = Array.from(this.currentWord);
+          this.renderWord();
+          this.checkEnd('word-guess');
+        } else {
+          this.attemptsLeft = Math.max(0, this.attemptsLeft - GUESS_WORD_PENALTY_ATTEMPTS);
+          this.setAttempts();
+          this.updateControlState();
+          
+          const displayGuess = guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase();
+          
+          this.setMessage(`'${escapeHtml(displayGuess)}' is incorrect. Lost ${GUESS_WORD_PENALTY_ATTEMPTS} attempts.`, 'error');
+          this.checkEnd('word-guess-fail');
+        }
+        
+        // NEW: Restart the timer after a guess word attempt if game isn't over
+        if (!this.gameOver) {
+            this.startTimer(); 
+        }
+        
+        this.saveSession();
+      }
+
+      async skipWord(){
+        if(this.gameOver || this.dom.skipWordBtn.disabled) return;
+        this.stopTimer(); // Stop timer during confirmation
+        
+        const ok = await this.showConfirm({
+          title: 'Skip Word',
+          desc: `Are you sure you want to skip this word? This will cost **${SKIP_WORD_PENALTY_POINTS} points**, and the round will end for ${this.players[this.currentPlayerIndex].name}.`,
+          okText: 'Yes, Skip',
+          cancelText: 'Cancel'
+        });
+        
+        if(!ok) {
+            this.startTimer(); // Restart timer if cancelled
+            return;
+        }
+
+        this.players[this.currentPlayerIndex].points = Math.max(0, (Number(this.players[this.currentPlayerIndex].points)||0) - SKIP_WORD_PENALTY_POINTS);
+        this.setAttempts();
+        
+        this.setMessage(`Word skipped. Lost ${SKIP_WORD_PENALTY_POINTS} pts. Round over.`, 'error');
+        this.checkEnd('skip');
+        this.saveSession();
+      }
+
+      async hostReveal(){
+        if(this.gameOver || this.dom.hostRevealBtn.disabled) return;
+        this.stopTimer(); // Temporarily stop timer during modal input
+        
+        const hostPass = await this.showInput({
+          title: 'Host Password Required',
+          desc: `Enter the Host Password to reveal the word. Penalty: **${HOST_REVEAL_PENALTY} pts** for the current player.`,
+          placeholder: 'Host Password',
+          type: 'password'
+        });
+
+        if (hostPass === null) {
+            this.startTimer(); // Restart timer if cancelled
+            return;
+        }
+
+        if (hostPass !== HOST_PASSWORD) {
+          this.setMessage('Incorrect Host Password.', 'error');
+          this.startTimer(); // Restart timer if incorrect
+          return;
+        }
+
+        if (!this.currentWord) return;
+
+        const penalty = HOST_REVEAL_PENALTY;
+const player = this.players[this.currentPlayerIndex];
+
+let penaltyApplied = false;
+
+if (!this.hostRevealUsedThisRound) {
+  player.points = Math.max(0, (Number(player.points) || 0) - penalty);
+  this.hostRevealUsedThisRound = true;
+  penaltyApplied = true;
+}
+
+this.renderPlayers();
+this.saveSession();
+
+await this.showInput({
+  title: `ADMIN: Word Revealed for Host`,
+  desc: `
+    The word is:
+    <strong style="color:#facc15;font-size:1.3em;">
+      ${this.currentWord.toUpperCase()}
+    </strong><br><br>
+    ${
+      penaltyApplied
+        ? `Penalty applied to ${player.name}: -${penalty} pts.`
+        : `No additional penalty — already revealed this round.`
+    }
+  `,
+  hideInputField: true
+});
+
+        this.setMessage(
+  penaltyApplied
+    ? `Host accessed the word. ${player.name} lost ${penalty} pts.`
+    : `Host viewed the word again (no extra penalty).`,
+  penaltyApplied ? 'error' : 'success'
+);
+        this.startTimer(); // Restart timer after host reveals
+      }
+
+      // Calculates points and updates overall stats at the end of a round
+      finalizeStats(win, method){
+        const player = this.players[this.currentPlayerIndex];
+
+        let delta = 0;
+    
+        if(win){
+          // --- START OF NEW SCORING LOGIC ---
+        
+          // 1. Determine Difficulty Multiplier
+          let difficultyMultiplier = 1.0;
+          const diff = this.dom.difficultySelect.value;
+        
+          if (diff === 'medium') {
+            difficultyMultiplier = 1.25; // Example: 25% bonus for Medium
+          } else if (diff === 'hard') {
+            difficultyMultiplier = 1.5;   // Example: 50% bonus for Hard
+          }
+        
+          // 2. Calculate Base Points based on Attempts Left (Tries Remaining)
+          // Formula: 50 + (3 * Attempts Left)
+          const basePoints = 50 + (3 * this.attemptsLeft);
+        
+          // 3. Apply Multiplier
+          let rawPoints = basePoints * difficultyMultiplier;
+        
+          // 4. Apply Hint Penalty (If hints are still deducted)
+          // Note: You can keep or remove this, as it's not in the formula you provided.
+          // Keeping it for robust gameplay, but adjusting the penalty value.
+          rawPoints -= this.hintsUsedThisRound * 8; // Penalty: -8 points per hint
+        
+          // 5. Finalize Points
+          // Formula: Round(Raw Points), ensuring a minimum of 1 point
+          delta = Math.round(Math.max(1, rawPoints)); 
+
+          // Update player score
+          player.points = (Number(player.points)||0) + delta;
+        
+          // --- END OF NEW SCORING LOGIC ---
+        
+          // Update general game stats
+          this.gamesWon++;
+          this.currentStreak++;
+          this.bestStreak = Math.max(this.bestStreak, this.currentStreak);
+          player.gamesWon = (player.gamesWon || 0) + 1; 
+        
+        } 
+        else {
+          // Time-out, skip, or loss doesn't affect points unless it's a specific penalty
+          if(method === 'skip') delta = -SKIP_WORD_PENALTY_POINTS; 
+        
+          this.currentStreak = 0;
+        }
+       
+       
+        this.gamesPlayed++;
+        this.renderPlayers(); 
+        this.saveSession();
+
+        return { delta, total: player.points };
+      }
+
+      // Checks for win/loss conditions
+      checkEnd(method){
+        if(this.gameOver) return;
+
+        if(!this.displayWord.includes('_')){
+          this.gameOver=true;
+          this.stopTimer(); // NEW: Stop the timer on win
+          this.setMessage('You guessed the word!', 'success');
+          const {delta,total} = this.finalizeStats(true, method);
+          this.showResult({ win:true, word:this.currentWord, playerName:this.players[this.currentPlayerIndex].name, delta, total, method});
+        } 
+        else if(this.attemptsLeft<=0 || method==='skip'){
+          this.gameOver=true;
+          this.stopTimer(); // NEW: Stop the timer on loss/skip
+          const titleCaseWord = this.currentWord.charAt(0).toUpperCase() + this.currentWord.slice(1).toLowerCase();
+          this.setMessage(`Game over! The word was: ${titleCaseWord}`, 'error'); 
+          const {delta,total} = this.finalizeStats(false, method);
+          this.showResult({ win:false, word:this.currentWord, playerName:this.players[this.currentPlayerIndex].name, delta, total, method});
+        }
+        
+        if(this.gameOver){
+          this.enableKeyboard(false);
+          this.updateControlState();
+          this.dom.restartBtn.classList.remove('hidden');
+        }
+      }
+      
+      // Shows the result card (Logic remains the same)
+      showResult({win,word,playerName,delta,total,method}){
+        this.dom.resultCard.classList.remove('hidden');
+        this.dom.resultTitle.textContent = win? 'You guessed it! 🎉':'Game over 💀';
+        const deltaText = delta>0? `+${delta}` : delta<0? `${delta}` : '0';
+        const hintInfo = this.hintsUsedThisRound? `${this.hintsUsedThisRound} hint${this.hintsUsedThisRound>1?'s':''}` : 'no hints';
+        let methodInfo = method === 'skip' ? `(Skipped)` : method === 'word-guess' ? `(Guessed Word)` : '';
+        this.dom.resultDetails.innerHTML = `${playerName} ${win? 'solved':'missed'} "${escapeHtml(word)}". ${methodInfo} ${hintInfo} used. Points change: ${deltaText}. Total: ${total || 0}. Streak: ${this.currentStreak}.`;
+      }
+
+
+      // --- KEYBOARD AND FIGURE MANAGEMENT (Logic remains the same) ---
+      
+      buildKeyboard(){
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+        this.dom.keyboardEl.innerHTML = '';
+        for(const ch of alphabet){
+          const b = document.createElement('button');
+          b.className = 'key';
+          b.textContent = ch.toUpperCase();
+          b.setAttribute('data-letter', ch);
+          b.setAttribute('aria-label', `Guess letter ${ch.toUpperCase()}`);
+          b.tabIndex = 0;
+          b.addEventListener('click', ()=> this.onKeyClick(ch,b));
+          this.dom.keyboardEl.appendChild(b);
+        }
+      }
+
+      enableKeyboard(enable=true){
+        this.dom.keyboardEl.querySelectorAll('button').forEach(b=>{
+          b.disabled = !enable;
+          b.tabIndex = enable ? 0 : -1;
+        });
+        this.dom.keyboardEl.setAttribute('aria-hidden', (!enable).toString());
+        this.dom.restartBtn.tabIndex = this.gameOver ? 0 : -1;
+      }
+
+      onKeyClick(letter, btn){
+        if(this.gameOver) return;
+        if(btn.disabled) return;
+        btn.disabled=true;
+        btn.tabIndex = -1;
+        this.handleGuess(letter, btn);
+      }
+
+      updateWrongUI(){
+        this.dom.wrongLettersEl.innerHTML = `Wrong guesses: <strong>${this.wrongLetters.map(l=>l.toUpperCase()).join(', ')}</strong>`;
+      }
+
+      resetFigure(){
+        this.dom.parts.forEach(p=>p.classList.remove('visible'));
+      }
+
+      updateFigure(){
+        const mistakes = this.maxAttemptsThisRound - this.attemptsLeft;
+        this.dom.parts.forEach(p=>{
+          const stage = Number(p.dataset.stage||0);
+          if(stage < mistakes) p.classList.add('visible');
+          else p.classList.remove('visible');
+        });
+      }
+
+      // --- MODAL UTILITIES (Updated showInput logic) ---
+
+      showModal(id){
+        const el = document.getElementById(id);
+        if(!el) return null;
+        el.classList.remove('hidden');
+        el.setAttribute('aria-hidden','false');
+        return el;
+      }
+
+      hideModal(id){
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.classList.add('hidden');
+        el.setAttribute('aria-hidden','true');
+      }
+
+      showConfirm({title='Confirm', desc='Are you sure?', okText='Yes', cancelText='Cancel'}){
+        return new Promise(resolve=>{
+          const modal = this.showModal('confirm-modal');
+          if(!modal) return resolve(false);
+
+          $('#confirm-title').textContent = title;
+          $('#confirm-desc').innerHTML = desc;
+
+          const okBtn = $('#confirm-ok');
+          const cancelBtn = $('#confirm-cancel');
+
+          okBtn.textContent = okText;
+          cancelBtn.textContent = cancelText;
+
+          const cleanup = (result)=>{
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            this.hideModal('confirm-modal');
+            resolve(result);
+          };
+
+          const onOk = ()=> cleanup(true);
+          const onCancel = ()=> cleanup(false);
+
+          okBtn.addEventListener('click', onOk);
+          cancelBtn.addEventListener('click', onCancel);
+          
+          setTimeout(()=>okBtn.focus(),40);
+        });
+      }
+
+      // *** MODIFIED: Logic to use defaultValue as placeholder and clear input value ***
+      showInput({title='Input', desc='Enter text:', placeholder='Type here...', defaultValue='', type='text', okText='OK', cancelText='Cancel', hideInputField=false}){
+        return new Promise(resolve=>{
+          const modal = this.showModal('input-modal');
+          if(!modal) return resolve(null);
+          
+          $('#input-title').textContent = title;
+          $('#input-desc').innerHTML = desc;
+          
+          const inputEl = $('#player-input');
+          const okBtn = $('#input-ok');
+          const cancelBtn = $('#input-cancel');
+
+          okBtn.textContent = okText;
+          cancelBtn.textContent = cancelText;
+          
+          // MODIFICATION START: Set default value as placeholder, and clear the input field's value
+          inputEl.placeholder = placeholder;
+          if (defaultValue && placeholder === 'Type here...') {
+              inputEl.placeholder = defaultValue;
+          } 
+          inputEl.value = ''; // Ensure the input is empty for easier typing
+          // MODIFICATION END
+
+          inputEl.type = type;
+          
+          inputEl.style.display = hideInputField ? 'none' : 'block';
+
+          const cleanup = (value)=>{
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            inputEl.removeEventListener('keydown', onKey);
+            this.hideModal('input-modal');
+            
+            // If the input was empty after trimming (user clicked OK without typing), 
+            // fall back to the defaultValue if one was provided.
+            if (!value.trim() && defaultValue) {
+                resolve(defaultValue);
+            } else {
+                resolve(value.trim());
+            }
+          };
+
+          const onOk = ()=> cleanup(inputEl.value);
+          const onCancel = ()=> cleanup(null);
+          const onKey = (e) => { if(e.key === 'Enter') onOk(); };
+
+          okBtn.addEventListener('click', onOk);
+          cancelBtn.addEventListener('click', onCancel);
+          inputEl.addEventListener('keydown', onKey);
+          
+          if (!hideInputField) setTimeout(()=>inputEl.focus(),40);
+        });
+      }
+      
+      // Reusable player selection modal for admin actions (Logic remains the same)
+      async selectPlayerAction(actionType, callback){
+        if (this.players.length === 0) {
+          await this.showInput({ title: 'No Players', desc: 'There are no players in the session.', hideInputField: true });
+          return;
+        }
+        
+        return new Promise(resolve => {
+          const modal = this.showModal('player-select-modal');
+          let title;
+          if(actionType === 'remove') title = 'Remove which player?';
+else if(actionType === 'adjust') title = 'Adjust points for which player?';
+else if(actionType === 'rename') title = 'Rename which player?';
+else title = 'Select Player'; // Not used for a standalone action
+
+          $('#player-select-title').textContent = title;
+          const listEl = $('#player-select-list');
+          listEl.innerHTML = '';
+
+          this.players.forEach((p, i) => {
+              const btn = document.createElement('button');
+              btn.className = 'btn-secondary';
+              // REFINEMENT: Changed # to . for player number
+              btn.textContent = `${i + 1}. ${escapeHtml(p.name)} (${p.points} pts)`;
+              btn.style.margin = '5px';
+              btn.style.width = 'calc(50% - 10px)';
+              btn.style.minWidth = '200px';
+              btn.style.textAlign = 'left';
+              btn.tabIndex = 0;
+
+              btn.addEventListener('click', () => {
+                  this.hideModal('player-select-modal');
+                  callback(i);
+                  resolve(true);
+              });
+              listEl.appendChild(btn);
+          });
+          
+          const closeBtn = $('#player-select-close');
+          closeBtn.textContent = 'Cancel';
+          closeBtn.onclick = () => {
+            this.hideModal('player-select-modal');
+            resolve(false);
+          };
+          setTimeout(()=>listEl.querySelector('button')?.focus(),40);
+        });
+      }
+
+      // --- PLAYER AND ADMIN MANAGEMENT LOGIC ---
+
+      // Prompts for the number of players (Logic remains the same)
+      async askPlayerCount(){
+        while(true){
+          const res = await this.showInput({
+            title:'How many players?',
+            desc:'Enter a number (e.g., 1, 2, 3)',
+            placeholder:'Number of players',
+            defaultValue:'1',
+            okText: 'Set'
+          });
+          if(res === null) return 1;
+          if(String(res).trim() === '') return 1;
+          const n = parseInt(String(res).trim(),10);
+          if(!isNaN(n) && n>=1) return n;
+          await this.showInput({
+            title:'Invalid Input',
+            desc:'Please enter a valid number (1 or more)', 
+            defaultValue:'',
+            hideInputField: true
+          });
+        }
+      }
+
+      // Handles the initial setup of player names and list (Logic remains the same)
+      async setupPlayers(){
+        const count = await this.askPlayerCount();
+        this.players = [];
+        const used = new Set();
+        for(let i=0;i<count;i++){
+          while(true){
+            const defaultName = `Player ${i+1}`;
+            const name = await this.showInput({
+              title:`Name for Player ${i+1}/${count}`,
+              desc:'Enter player name (must be unique)',
+              placeholder: defaultName,
+              defaultValue: defaultName,
+              okText: 'Confirm'
+            });
+            if(name === null) return;
+            
+            const cleanName = String(name).trim() || defaultName;
+            
+            if(cleanName.length > 20){
+              await this.showInput({title:'Name Too Long', desc:'Name must be 20 characters or less.', hideInputField: true});
+              continue;
+            }
+
+            if(used.has(cleanName.toLowerCase()) && count > 1){
+              await this.showInput({title:'Name Not Unique', desc:'This name is already in use. Please choose another.', hideInputField: true});
+              continue;
+            }
+
+            this.players.push({
+              name: cleanName,
+              points: 0,
+              totalGuesses: 0,
+              wrongGuesses: 0,
+              successfulWordGuesses: 0,
+              totalWordGuesses: 0,
+              totalHintsUsed: 0,
+              gamesWon: 0,
+            });
+            used.add(cleanName.toLowerCase());
+            break;
+          }
+        }
+        if(this.players.length === 0){
+          this.players.push({
+            name: 'Player 1',
+            points: 0,
+            totalGuesses: 0,
+            wrongGuesses: 0,
+            successfulWordGuesses: 0,
+            totalWordGuesses: 0,
+            totalHintsUsed: 0,
+            gamesWon: 0,
+          });
+        }
+        this.renderPlayers();
+      }
+
+      // MODIFIED: Function triggered by the new 'Select' button
+      async selectNextPlayer(isInitialLoad){
+        if (this.players.length <= 1) {
+            if (isInitialLoad) this.currentPlayerIndex = 0;
+            this.renderPlayers();
+            return;
+        }
+        
+        this.stopTimer(); // Stop timer during player selection
+
+        return new Promise(resolve => {
+            const modal = this.showModal('player-select-modal');
+            $('#player-select-title').textContent = isInitialLoad ? 'Start with which player?' : 'Select Next Player';
+            const listEl = $('#player-select-list');
+            listEl.innerHTML = '';
+            
+            this.players.forEach((p, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-secondary';
+                // REFINEMENT: Changed # to . for player number
+                btn.textContent = `${i + 1}. ${escapeHtml(p.name)} (${p.points} pts) ${i === this.currentPlayerIndex ? ' (Current)' : ''}`;
+                btn.style.margin = '5px';
+                btn.style.width = 'calc(50% - 10px)';
+                btn.style.minWidth = '200px';
+                btn.style.textAlign = 'left';
+
+                if (i === this.currentPlayerIndex && !isInitialLoad) btn.disabled = true;
+
+                btn.addEventListener('click', () => {
+                    this.currentPlayerIndex = i;
+                    this.renderPlayers();
+                    this.hideModal('player-select-modal');
+                    
+                    // Only restart the timer if we are in the middle of a game (not initial load)
+                    if (!isInitialLoad && !this.gameOver) this.startTimer(); 
+                    if (isInitialLoad) this.startGame(); 
+                    resolve();
+                });
+                listEl.appendChild(btn);
+            });
+            
+            const closeBtn = $('#player-select-close');
+            closeBtn.textContent = isInitialLoad ? 'Cancel (Start with P1)' : 'Cancel';
+            const onCancel = () => {
+              this.hideModal('player-select-modal');
+              if(isInitialLoad && this.players.length > 0) this.currentPlayerIndex = 0;
+              this.renderPlayers();
+              if (!isInitialLoad && !this.gameOver) this.startTimer(); // Restart timer if cancelled mid-game
+              resolve();
+            }
+            closeBtn.onclick = onCancel;
+            
+            if(isInitialLoad) closeBtn.focus();
+        });
+      }
+
+      // --- ADMIN FUNCTIONS (Logic remains the same, except for the player selection call) ---
+      showSettings(){
+        this.stopTimer(); // Stop timer while settings are open
+        const modal = this.showModal('settings-modal');
+        if(!modal) return;
+
+        const closeBtn = $('#settings-close');
+        // Restart timer on close if game is not over
+        closeBtn.onclick = () => { 
+            this.hideModal('settings-modal'); 
+            if (!this.gameOver) this.startTimer(); 
+        };
+
+        $('#setting-show-profile').onclick = () => { this.hideModal('settings-modal'); this.showProfile(); };
+        $('#setting-show-leaderboard').onclick = () => { this.hideModal('settings-modal'); this.showLeaderboard(false); };
+        // Changed to use the new dedicated function
+        $('#setting-select-player').onclick = () => { this.hideModal('settings-modal'); this.selectNextPlayer(false); };
+        $('#setting-rename-player').onclick = () => { this.hideModal('settings-modal'); this.renamePlayer(); };
+        $('#setting-add-player').onclick = () => { this.hideModal('settings-modal'); this.addPlayer(); };
+        $('#setting-remove-player').onclick = () => { this.hideModal('settings-modal'); this.removePlayer(); };
+        $('#setting-adjust-points').onclick = () => { this.hideModal('settings-modal'); this.adjustPlayerPoints(); };
+        $('#setting-end-session').onclick = () => { this.hideModal('settings-modal'); this.endSession(); };
+        $('#setting-end-game').onclick = () => { this.hideModal('settings-modal'); this.endGame(); };
+      }
+      
+      showProfile(){
+        this.stopTimer(); // Stop timer while modal is open
+        const player = this.players[this.currentPlayerIndex];
+        if(!player) return;
+
+        const modal = this.showModal('profile-modal');
+        if(!modal) return;
+        
+        $('#profile-name').textContent = escapeHtml(player.name);
+        $('#profile-points').textContent = player.points;
+        
+        const totalRounds = this.gamesPlayed;
+        const roundsWon = player.gamesWon || 0; 
+        const winRate = totalRounds > 0 ? ((roundsWon / totalRounds) * 100).toFixed(0) : 0;
+
+        const totalPlays = player.totalGuesses + player.totalWordGuesses;
+        const wrongGuessRate = totalPlays > 0 ? player.wrongGuesses / totalPlays : 0;
+        const wordGuessRate = totalPlays > 0 ? player.totalWordGuesses / totalPlays : 0;
+        const hintRate = totalPlays > 0 ? player.totalHintsUsed / totalPlays : 0;
+        const successfulWordGuessRate = player.totalWordGuesses > 0 ? player.successfulWordGuesses / player.totalWordGuesses : 0;
+        const winRateStat = totalRounds > 0 ? player.gamesWon / totalRounds : 0;
+
+
+        const getPlaystyle = () => {
+          if (hintRate > 0.5) return { style: "Hint Relying", color: "#facc15" };
+          if (wordGuessRate > 0.2 && successfulWordGuessRate > 0.5) return { style: "Calculated Risk Taker", color: "#f97373" };
+          if (wordGuessRate > 0.4 && successfulWordGuessRate < 0.5) return { style: "Impulsive Guesser", color: "#ef4444" };
+          if (winRateStat > 0.6 && wrongGuessRate < 0.3) return { style: "Cautious Strategist", color: "#4ade80" };
+          if (winRateStat < 0.3 && wrongGuessRate > 0.6) return { style: "Resilient Learner", color: "#9ca3af" };
+          if (winRateStat > 0.45) return { style: "Consistent Performer", color: "#a5b4fc" };
+          return { style: "Balanced Player", color: "#dbeafe" };
+        }
+
+        const playstyle = getPlaystyle();
+        
+        $('#profile-win-rate').textContent = `${winRate}%`;
+        $('#profile-total-guesses').textContent = player.totalGuesses;
+        $('#profile-wrong-guesses').textContent = player.wrongGuesses;
+        $('#profile-words-guessed').textContent = player.successfulWordGuesses;
+        $('#profile-hints-used').textContent = player.totalHintsUsed;
+        
+        $('#profile-playstyle').textContent = playstyle.style;
+        $('#profile-playstyle').style.color = playstyle.color;
+
+        $('#profile-close').onclick = () => { 
+            this.hideModal('profile-modal'); 
+            if (!this.gameOver) this.startTimer(); 
+        };
+      }
+
+      showLeaderboard(isFinal){
+        this.stopTimer(); // Stop timer while modal is open
+        const modal = this.showModal('endgame-modal');
+        if(!modal) return;
+        
+        $('#endgame-title').textContent = isFinal ? 'Final Leaderboard' : 'Current Leaderboard';
+        $('#leaderboard-desc').textContent = isFinal ? 'Final scores.' : 'Current scores.';
+
+        const sortedPlayers = [...this.players].sort((a, b) => b.points - a.points);
+        const bodyEl = $('#leaderboard-body');
+        bodyEl.innerHTML = '';
+        
+        sortedPlayers.forEach((p, i) => {
+          const row = bodyEl.insertRow();
+          row.insertCell().textContent = i + 1;
+          row.insertCell().textContent = escapeHtml(p.name);
+          row.insertCell().textContent = p.points;
+        });
+
+        const closeBtn = $('#leaderboard-close-btn');
+        closeBtn.onclick = () => { 
+            this.hideModal('endgame-modal'); 
+            if (!this.gameOver && !isFinal) this.startTimer(); // Restart timer if not final game
+        };
+      }
+      
+      async addPlayer(){
+        while(true){
+          this.stopTimer(); // Stop timer during input
+          const name = await this.showInput({
+            title:'Add New Player',
+            desc:'Enter player name (must be unique)',
+            placeholder: 'New Player',
+            okText: 'Add'
+          });
+
+          if(name === null) {
+              if (!this.gameOver) this.startTimer();
+              return;
+          }
+
+          const cleanName = String(name).trim();
+
+          if(!cleanName){
+            await this.showInput({title:'Invalid Name', desc:'Player name cannot be empty.', hideInputField: true});
+            continue;
+          }
+          if(this.players.some(p=>p.name.toLowerCase() === cleanName.toLowerCase())){
+            await this.showInput({title:'Name Not Unique', desc:'This name is already in use. Please choose another.', hideInputField: true});
+            continue;
+          }
+
+          this.players.push({
+            name: cleanName,
+            points: 0,
+            totalGuesses: 0,
+            wrongGuesses: 0,
+            successfulWordGuesses: 0,
+            totalWordGuesses: 0,
+            totalHintsUsed: 0,
+            gamesWon: 0,
+          });
+          this.renderPlayers();
+          this.setMessage(`Player '${cleanName}' added to the session.`, 'success');
+          this.saveSession();
+          if (!this.gameOver) this.startTimer(); // Restart timer after successful operation
+          break;
+        }
+      }
+
+      async removePlayer(){
+        this.stopTimer(); // Stop timer during modal
+        await this.selectPlayerAction('remove', async (idxToRemove) => {
+          const playerToRemove = this.players[idxToRemove];
+          
+          this.stopTimer(); // Ensure timer is stopped for the confirm modal
+          const ok = await this.showConfirm({
+            title: 'Confirm Player Removal',
+            desc: `Are you sure you want to remove ${playerToRemove.name} (${idxToRemove + 1}. , ${playerToRemove.points} pts)? All stats will be lost.`,
+            okText: 'Yes, Remove',
+            cancelText: 'Cancel'
+          });
+
+          if (ok) {
+            this.players.splice(idxToRemove, 1);
+            
+            if (this.currentPlayerIndex === idxToRemove) {
+              this.currentPlayerIndex = 0; 
+            } else if (this.currentPlayerIndex > idxToRemove) {
+              this.currentPlayerIndex--;
+            }
+            
+            if(this.players.length === 0){
+              this.clearSession();
+              await this.setupPlayers();
+              this.startGame();
+            } else {
+              this.renderPlayers();
+              this.setMessage(`Player '${playerToRemove.name}' removed.`, 'success');
+              this.saveSession();
+              this.startTimer();
+            }
+          } else {
+              if (!this.gameOver) this.startTimer(); // Restart timer if cancelled
+          }
+        });
+        if (!this.gameOver && this.players.length > 0) this.startTimer(); // Fallback restart
+      }
+
+      async adjustPlayerPoints(){
+        this.stopTimer(); // Stop timer during modal
+        await this.selectPlayerAction('adjust', async (idxToAdjust) => {
+          const playerToAdjust = this.players[idxToAdjust];
+
+          while(true){
+            this.stopTimer(); // Ensure timer is stopped during input
+            const adjustmentValue = await this.showInput({
+              title: `Adjust Points for ${playerToAdjust.name}`,
+              desc: `Current Points: ${playerToAdjust.points}. Enter an adjustment (e.g., +10, -5) or a new total (e.g., 100).`,
+              placeholder: `+10, -5, or 100`,
+              okText: 'Apply'
+            });
+            
+            if (adjustmentValue === null) {
+                if (!this.gameOver) this.startTimer();
+                return;
+            }
+            
+            const val = String(adjustmentValue).trim();
+            let newPoints = playerToAdjust.points;
+            let delta = 0;
+            let isValid = false;
+
+            if (/^[+-]\d+$/.test(val)) {
+              delta = parseInt(val, 10);
+              newPoints = Math.max(0, playerToAdjust.points + delta);
+              isValid = true;
+            } 
+            else {
+              const total = parseInt(val, 10);
+              if (!isNaN(total) && total >= 0) {
+                newPoints = total;
+                delta = newPoints - playerToAdjust.points;
+                isValid = true;
+              }
+            }
+            
+            if (isValid) {
+              playerToAdjust.points = newPoints;
+              this.renderPlayers();
+              this.setMessage(`Points for ${playerToAdjust.name} adjusted. Change: ${delta > 0 ? '+' + delta : delta}. New total: ${newPoints}.`, 'success');
+              this.saveSession();
+              if (!this.gameOver) this.startTimer(); // Restart timer after successful operation
+              return;
+            } else {
+              await this.showInput({ title: 'Invalid Input', desc: 'Please enter a valid non-negative total, or an adjustment (e.g., +10, -5).', hideInputField: true });
+            }
+          }
+        });
+        if (!this.gameOver) this.startTimer(); // Fallback restart
+      }
+
+      async endSession(){
+        this.stopTimer(); // Stop timer during confirmation
+        const ok = await this.showConfirm({
+          title:'End Current Session',
+          desc:'Are you sure you want to end the current round and save the session? You can resume later.',
+          okText: 'Save & End Session',
+          cancelText: 'Cancel'
+        });
+        if(!ok) {
+            if (!this.gameOver) this.startTimer(); // Restart timer if cancelled
+            return;
+        }
+
+        this.saveSession();
+        this.gameOver=true;
+        this.enableKeyboard(false);
+        this.updateControlState();
+        this.setMessage('Session saved. You can continue next time.');
+      }
+
+      async endGame(){
+        this.stopTimer(); // Stop timer during confirmation
+        const ok = await this.showConfirm({
+          title:'End Game',
+          desc:'Are you sure you want to end the entire game, display the final leaderboard, and clear all saved session data?',
+          okText: 'Yes, End Game',
+          cancelText: 'Cancel'
+        });
+        if(!ok) {
+            if (!this.gameOver) this.startTimer(); // Restart timer if cancelled
+            return;
+        }
+        
+        try{
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.setItem(ENDGAME_KEY,'1');
+        }catch(e){}
+
+        this.showLeaderboard(true);
+        this.gameOver=true; 
+        this.enableKeyboard(false);
+        this.updateControlState();
+        this.dom.restartBtn.classList.add('hidden');
+        this.dom.resultCard.classList.add('hidden');
+        this.setMessage('Game ended. All session data cleared. Refresh to start a new game.');
+      }
+    }
+
+    // --- GAME INITIALIZATION ---
+    window.Hangman = new HangmanGame();
+
+  })();
+  </script>
+</body>
+</html>
