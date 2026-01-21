@@ -489,6 +489,17 @@
           Use these options to manage the game session.
         </div>
         <div class="settings-options" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-top:16px;">
+            <label style="
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:0.95rem;
+  color:#dbeafe;
+  cursor:pointer;
+">
+  <input type="checkbox" id="disable-timer-checkbox">
+  Disable Timer (applies to all rounds)
+</label>
           <button id="setting-show-profile" class="btn-secondary">View My Profile</button>
           <button id="setting-show-leaderboard" class="btn-secondary">View Leaderboard</button>
           <button id="setting-select-player" class="btn-secondary">Change Current Player</button>
@@ -579,6 +590,7 @@
     const GUESS_WORD_PENALTY_ATTEMPTS = 3;
     const GUESS_WORD_BONUS_POINTS = 20;
     const SKIP_WORD_PENALTY_POINTS = 10;
+    const TIMER_SETTING_KEY = 'hangmanDisableTimerV1';
     
     // NEW CONSTANT FOR TIMER DURATION
     const ROUND_TIME_LIMIT = 15; // Time in seconds
@@ -778,6 +790,7 @@
   gameOver = false;
 
   timerInterval = null;
+  timerDisabled = false;
   dom = {
         attemptsEl: $('#attempts'),
         wordEl: $('#word'),
@@ -877,9 +890,26 @@
   }
       // --- INITIALIZATION & SETUP ---
       constructor(){
-        this.bindEvents();
-        this.loadInitialSettings();
-      }
+  this.bindEvents();
+  this.loadInitialSettings();
+  this.loadTimerSetting(); // ✅ gives timer state on load
+}
+      loadTimerSetting() {
+  try {
+    const saved = localStorage.getItem(TIMER_SETTING_KEY);
+
+    // ✅ default = false when nothing saved
+    this.timerDisabled = saved === 'true';
+  } catch (e) {
+    this.timerDisabled = false;
+  }
+}
+
+saveTimerSetting() {
+  try {
+    localStorage.setItem(TIMER_SETTING_KEY, String(this.timerDisabled));
+  } catch (e) {}
+}
 
       bindEvents(){
         this.dom.guessWordBtn.addEventListener('click', () => this.guessWord());
@@ -1014,29 +1044,36 @@
       
       // Starts a new timer, clearing any existing one
       startTimer() {
-        this.stopTimer(); // Clear any existing timer
-        
-        let timeLeft = ROUND_TIME_LIMIT;
-        this.updateTimerDisplay(timeLeft);
-        
-        this.timerInterval = setInterval(() => {
-          timeLeft--;
-          this.updateTimerDisplay(timeLeft);
-          
-          if (timeLeft <= 0) {
-            this.stopTimer();
-            this.handleTimeOut();
-          }
-        }, 1000);
+  if (this.timerDisabled) {
+    this.stopTimer();
+    $('#timer-display').style.display = 'none';
+    return;
+  }
+
+  $('#timer-display').style.display = 'block';
+
+  this.stopTimer();
+  let timeLeft = ROUND_TIME_LIMIT;
+  this.updateTimerDisplay(timeLeft);
+
+  this.timerInterval = setInterval(() => {
+    timeLeft--;
+    this.updateTimerDisplay(timeLeft);
+
+    if (timeLeft <= 0) {
+      this.stopTimer();
+      this.handleTimeOut();
     }
+  }, 1000);
+}
     
       // Clears the timer interval
       stopTimer() {
-        if (this.timerInterval !== null) {
-          clearInterval(this.timerInterval);
-          this.timerInterval = null;
-        }
-      }
+  if (this.timerInterval !== null) {
+    clearInterval(this.timerInterval);
+    this.timerInterval = null;
+  }
+}
       
       // Updates the UI for the timer text and progress bar
       updateTimerDisplay(timeLeft) {
@@ -1988,6 +2025,21 @@ else title = 'Select Player'; // Not used for a standalone action
         this.stopTimer(); // Stop timer while settings are open
         const modal = this.showModal('settings-modal');
         if(!modal) return;
+        const checkbox = $('#disable-timer-checkbox');
+checkbox.checked = this.timerDisabled;
+
+checkbox.onchange = () => {
+  this.timerDisabled = checkbox.checked;
+  this.saveTimerSetting();
+
+  if (this.timerDisabled) {
+    this.stopTimer();
+    $('#timer-display').style.display = 'none';
+  } else {
+    $('#timer-display').style.display = 'block';
+    if (!this.gameOver) this.startTimer();
+  }
+};
 
         const closeBtn = $('#settings-close');
         // Restart timer on close if game is not over
